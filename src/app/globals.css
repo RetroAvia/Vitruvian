@@ -1,0 +1,308 @@
+/* =============================================================================
+   VITRUVIAN · Design System
+   Tailwind CSS v4 (config CSS-first) + token compatibili shadcn/ui.
+   Palette: Onyx/Slate profondo · Cyan neon (brand) · Smeraldo (progresso)
+            Ambra (attenzione) · Indaco (BIA) · Rosa (allarme)
+   ============================================================================= */
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ---------- Tema chiaro (secondario) ---------- */
+:root {
+  --radius: 0.875rem;
+
+  --background: oklch(0.975 0.004 250);
+  --foreground: oklch(0.2 0.02 260);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.2 0.02 260);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.2 0.02 260);
+  --primary: oklch(0.55 0.13 215);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.94 0.008 250);
+  --secondary-foreground: oklch(0.25 0.02 260);
+  --muted: oklch(0.94 0.008 250);
+  --muted-foreground: oklch(0.5 0.02 260);
+  --accent: oklch(0.93 0.02 215);
+  --accent-foreground: oklch(0.25 0.02 260);
+  --destructive: oklch(0.58 0.22 22);
+  --border: oklch(0.89 0.01 255);
+  --input: oklch(0.89 0.01 255);
+  --ring: oklch(0.55 0.13 215);
+
+  --neon: oklch(0.58 0.13 215);
+  --gain: oklch(0.58 0.15 160);
+  --warn: oklch(0.66 0.16 65);
+  --bia: oklch(0.52 0.2 278);
+  --danger: oklch(0.58 0.22 18);
+
+  --chart-1: var(--series-1);
+  --chart-2: var(--series-2);
+  --chart-3: var(--series-3);
+  --chart-4: var(--series-4);
+  --chart-5: var(--series-5);
+
+  --sidebar: oklch(0.99 0.002 250);
+  --sidebar-foreground: oklch(0.25 0.02 260);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.95 0.01 230);
+  --sidebar-accent-foreground: oklch(0.25 0.02 260);
+  --sidebar-border: oklch(0.9 0.01 255);
+  --sidebar-ring: var(--ring);
+
+  --glow: 0;
+  --surface-inset: oklch(0.965 0.005 250);
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.05), 0 10px 30px -14px rgb(15 23 42 / 0.22);
+  --shadow-raised: 0 2px 4px rgb(15 23 42 / 0.06), 0 22px 48px -20px rgb(15 23 42 / 0.32);
+
+  /* Serie dei grafici (palette validata: CVD + contrasto, vedi docs) */
+  --series-1: #0b7fa0;
+  --series-2: #eb6834;
+  --series-3: #4a3aa7;
+  --series-4: #e87ba4;
+  --series-5: #eda100;
+  --chart-surface: #ffffff;
+  --chart-grid: #e6e8ee;
+  --chart-axis: #8a8f9c;
+}
+
+/* ---------- Tema scuro (default) ---------- */
+.dark {
+  --background: oklch(0.135 0.012 262);
+  --foreground: oklch(0.955 0.006 250);
+  --card: oklch(0.19 0.014 262);
+  --card-foreground: oklch(0.955 0.006 250);
+  --popover: oklch(0.18 0.014 262);
+  --popover-foreground: oklch(0.955 0.006 250);
+  --primary: oklch(0.84 0.14 205);
+  --primary-foreground: oklch(0.16 0.03 230);
+  --secondary: oklch(0.24 0.014 262);
+  --secondary-foreground: oklch(0.93 0.006 250);
+  --muted: oklch(0.23 0.012 262);
+  --muted-foreground: oklch(0.72 0.018 255);
+  --accent: oklch(0.26 0.02 240);
+  --accent-foreground: oklch(0.96 0.006 250);
+  --destructive: oklch(0.66 0.21 22);
+  --border: oklch(1 0 0 / 0.09);
+  --input: oklch(1 0 0 / 0.11);
+  --ring: oklch(0.84 0.14 205 / 0.6);
+
+  --neon: oklch(0.84 0.14 205);
+  --gain: oklch(0.79 0.16 162);
+  --warn: oklch(0.83 0.15 78);
+  --bia: oklch(0.7 0.17 280);
+  --danger: oklch(0.7 0.19 18);
+
+  --sidebar: oklch(0.16 0.013 262);
+  --sidebar-foreground: oklch(0.93 0.006 250);
+  --sidebar-primary: var(--neon);
+  --sidebar-primary-foreground: oklch(0.16 0.03 230);
+  --sidebar-accent: oklch(0.24 0.02 240);
+  --sidebar-accent-foreground: oklch(0.96 0.006 250);
+  --sidebar-border: oklch(1 0 0 / 0.07);
+  --sidebar-ring: var(--ring);
+
+  --glow: 1;
+  --surface-inset: oklch(0.215 0.014 262 / 0.7);
+  --shadow-card: inset 0 1px 0 0 rgb(255 255 255 / 0.05), 0 1px 2px rgb(0 0 0 / 0.4), 0 16px 40px -20px rgb(0 0 0 / 0.85);
+  --shadow-raised: inset 0 1px 0 0 rgb(255 255 255 / 0.07), 0 2px 6px rgb(0 0 0 / 0.45), 0 28px 60px -24px rgb(0 0 0 / 0.95);
+
+  --series-1: #1aa3be;
+  --series-2: #d95926;
+  --series-3: #9085e9;
+  --series-4: #d55181;
+  --series-5: #c98500;
+  --chart-surface: #0e1117;
+  --chart-grid: #1f2430;
+  --chart-axis: #7d8494;
+}
+
+@theme inline {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-space-grotesk), var(--font-inter), ui-sans-serif, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 10px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Colori semantici del prodotto */
+  --color-neon: var(--neon);
+  --color-gain: var(--gain);
+  --color-warn: var(--warn);
+  --color-bia: var(--bia);
+  --color-danger: var(--danger);
+  --color-series-1: var(--series-1);
+  --color-series-2: var(--series-2);
+  --color-series-3: var(--series-3);
+  --color-series-4: var(--series-4);
+  --color-series-5: var(--series-5);
+
+  --animate-aurora: aurora 22s ease-in-out infinite alternate;
+  --animate-pulse-glow: pulse-glow 2.8s ease-in-out infinite;
+
+  @keyframes aurora {
+    0% { transform: translate3d(0, 0, 0) scale(1); }
+    50% { transform: translate3d(4%, -3%, 0) scale(1.08); }
+    100% { transform: translate3d(-3%, 4%, 0) scale(0.96); }
+  }
+  @keyframes pulse-glow {
+    0%, 100% { opacity: 0.55; }
+    50% { opacity: 1; }
+  }
+}
+
+/* ---------- Utility del design system ---------- */
+
+/* Card in vetro: sfocatura, bordo sottile, riflesso superiore */
+@utility glass {
+  background-color: color-mix(in oklab, var(--card) 70%, transparent);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  backdrop-filter: blur(18px) saturate(140%);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-card);
+}
+
+/* Card in evidenza (riepilogo, elementi principali) */
+@utility glass-raised {
+  background-color: color-mix(in oklab, var(--card) 82%, transparent);
+  -webkit-backdrop-filter: blur(22px) saturate(150%);
+  backdrop-filter: blur(22px) saturate(150%);
+  border: 1px solid color-mix(in oklab, var(--foreground) 12%, transparent);
+  box-shadow: var(--shadow-raised);
+}
+
+/* Riquadro interno a una card */
+@utility surface-inset {
+  background-color: var(--surface-inset);
+  border: 1px solid var(--border);
+}
+
+/* Variante più densa per barre di navigazione */
+@utility glass-strong {
+  background-color: color-mix(in oklab, var(--sidebar) 78%, transparent);
+  -webkit-backdrop-filter: blur(22px) saturate(150%);
+  backdrop-filter: blur(22px) saturate(150%);
+  border-color: var(--sidebar-border);
+}
+
+/* Testo con gradiente brand */
+@utility text-gradient {
+  background-image: linear-gradient(110deg, var(--neon), var(--bia) 60%, var(--gain));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Griglia tecnica di sfondo */
+@utility bg-grid {
+  background-image:
+    linear-gradient(to right, color-mix(in oklab, var(--foreground) 5%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in oklab, var(--foreground) 5%, transparent) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+
+/* Numeri allineati in colonna (tabelle e KPI) */
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "zero" 1;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    color-scheme: dark;
+  }
+  html:not(.dark) {
+    color-scheme: light;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+  h1, h2, h3 {
+    @apply font-display tracking-tight;
+  }
+  ::selection {
+    background-color: color-mix(in oklab, var(--neon) 35%, transparent);
+  }
+  /* Scrollbar discreta */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklab, var(--foreground) 18%, transparent) transparent;
+  }
+}
+
+/* Recharts: niente outline sul focus del mouse, sì per la tastiera */
+.recharts-wrapper:focus,
+.recharts-surface:focus {
+  outline: none;
+}
+.recharts-wrapper:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 4px;
+  border-radius: 8px;
+}
+
+/* Ingresso pagine: solo CSS, mai bloccante (se l'animazione non parte il contenuto è comunque visibile) */
+@keyframes page-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+@utility animate-page-in {
+  animation: page-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-page-in { animation: none; }
+}
+
+/* Stampa (report per il nutrizionista) */
+@media print {
+  @page { margin: 14mm; }
+  html, body { background: #fff !important; color: #111 !important; }
+  .no-print { display: none !important; }
+  .print-sheet { box-shadow: none !important; border: none !important; background: #fff !important; color: #111 !important; padding: 0 !important; max-width: none !important; }
+  .print-sheet * { color: #111 !important; border-color: #d4d4d8 !important; }
+  .print-sheet .text-muted-foreground, .print-sheet .text-muted-foreground * { color: #52525b !important; }
+  main { padding: 0 !important; }
+  .print\:border-0 { border: 0 !important; }
+  .print\:p-0 { padding: 0 !important; }
+}
