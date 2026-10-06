@@ -95,6 +95,21 @@ Nessuna migrazione. **AI Bridge → Dieta**: prompt → risposta dell'IA → ant
 
 ---
 
+## Aggiornamento 2 — Referti, integratori, consigli, sicurezza
+1. SQL Editor → esegui `supabase/migrations/20261010000001_reports_supplements.sql` (referti medici, integratori, checklist, data ultimo backup).
+2. SQL Editor → esegui `supabase/migrations/20261011000001_mfa_enforcement.sql` (il database risponde solo a sessioni con codice se la verifica in due passaggi è attiva; senza MFA non cambia nulla).
+3. `npm install` (rimuove la libreria `motion`, sostituita da animazioni CSS).
+4. Vercel → Settings → Environment Variables → aggiungi `CRON_SECRET` (una stringa casuale lunga, es. generata con un password manager). Serve al keep-alive giornaliero che evita la pausa del progetto Supabase gratuito dopo 7 giorni di inattività.
+5. Novità:
+   - **Referti medici** (`/reports`): ECG, visita sportiva, pressione, spirometria, eco, DEXA… importati con l'AI Bridge; misure nel tempo, esiti, scadenze dei controlli.
+   - **Integratori** (`/supplements`): checklist giornaliera, costanza, dosi totali per principio attivo confrontate con i limiti EFSA, interazioni.
+   - **Consigli** (`/advice`): motore che incrocia visite, obiettivi, dieta, analisi, integratori e referti; indice di salute; previsione della data di raggiungimento degli obiettivi; affidabilità dei dati.
+   - Dashboard con "Il tuo quadro" (indice, consigli principali, agenda di oggi), ricerca rapida `Ctrl+K`, menu "Altro" su smartphone, suoni discreti (disattivabili), animazioni CSS.
+   - **Impostazioni**: verifica in due passaggi (TOTP), disconnessione automatica, esci da tutti i dispositivi, backup completo JSON e ripristino.
+   - Sicurezza: Content-Security-Policy in produzione, cache locale cancellata al logout.
+
+---
+
 ## Convenzioni
 - Migrazioni: mai modificare un file già applicato → crea `supabase/migrations/<timestamp>_descrizione.sql`.
 - Dopo ogni migrazione: `npm run db:types`.

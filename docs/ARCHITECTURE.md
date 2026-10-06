@@ -9,7 +9,7 @@
 |---|---|---|
 | Framework | **Next.js (App Router, TypeScript)**, ultima stable via `create-next-app@latest` | Route groups per separare auth/app, server-side auth gate, deploy nativo su Vercel |
 | UI | Tailwind CSS + shadcn/ui (Radix) + Lucide | Componenti accessibili che *possiedi* nel repo, niente lock-in |
-| Animazioni | `motion` (ex Framer Motion) | Solo `transform`/`opacity`, `LazyMotion` per tenere leggero il bundle |
+| Animazioni | Solo CSS (utility `stagger`, `hover-lift`, `animate-*`) + Web Audio per i suoni | Zero JavaScript extra, rispetto di "riduci movimento" |
 | Grafici | Recharts | `ComposedChart` per linee+barre, tooltip custom |
 | Server state | **TanStack Query** | Cache, refetch, mutazioni ottimistiche per il CRUD |
 | UI state | Zustand (minimo) | Solo sidebar, range temporale selezionato, preferenze grafici |
@@ -131,3 +131,24 @@ Le soglie stanno in `config/thresholds.ts`, non sparse nel codice.
 4. ✅ Motore biometrico + Dashboard Recharts
 5. ✅ AI Bridge visite + analisi del sangue (migrazione 0003) (prompt generator + parser Zod + anteprima diff)
 6. ✅ Nutrizione (prompt dieta, visualizzatore piano, checklist, macro vs TDEE)
+7. ✅ Referti medici, integratori, motore dei consigli, previsioni, backup, MFA (migrazioni 0005–0006)
+
+## 7. Motore dei consigli (aggiornamento 2)
+
+| Modulo | Cosa fa |
+|---|---|
+| `biometrics/engine/forecast.ts` | Regressione lineare pesata (emivita 90 gg, finestra 9 mesi, stesso strumento BIA) → velocità mensile, R², data stimata per ogni obiettivo, valutazione del ritmo; punteggio di affidabilità dei dati |
+| `nutrition/engine/foods.ts` | Classifica gli alimenti del piano (parole chiave italiane) → porzioni settimanali di verdura, legumi, pesce, carne rossa, salumi, integrali…; proteine per pasto |
+| `supplements/engine/nutrients.ts` | Catalogo principi attivi con fabbisogni e UL EFSA, alias e conversioni (UI → µg) |
+| `supplements/engine/analysis.ts` | Dosi giornaliere e medie settimanali, limiti, doppioni, interazioni (ferro/calcio, caffeina serale, zinco/rame, biotina/analisi), aderenza |
+| `medical/engine/analysis.ts` | Stato delle misure (range del referto o generale), serie storiche, scadenze dei controlli, pressione ESC 2024, QTc |
+| `advice/engine/advice.ts` | Regole indipendenti che incrociano tutti i domini → consigli con priorità, perché e cosa fare; indice di salute 0–100 |
+
+`advice/hooks/use-health-context.ts` riusa la cache di TanStack Query: nessuna richiesta duplicata tra dashboard e pagina Consigli.
+
+### Sicurezza e salvataggio
+- Policy RLS **restrictive** `mfa_required` (0006): con un fattore TOTP verificato servono sessioni `aal2`.
+- `(app)/layout.tsx` porta al passaggio del codice se la sessione è `aal1`; `proxy.ts` lascia passare `/login?mfa=1` e `/api/keepalive`.
+- Backup: export di tutte le tabelle (JSON), ripristino tramite le RPC di import in modalità unione.
+- Keep-alive: Vercel Cron → `/api/keepalive` (protetto da `CRON_SECRET`).
+- CSP in produzione: il browser può contattare solo il sito e Supabase.
