@@ -12,6 +12,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   if (!claims?.sub) redirect("/login")
 
+  // Verifica in due passaggi: con un fattore attivo serve una sessione aal2
+  if (claims.aal !== "aal2") {
+    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+    if (aal?.nextLevel === "aal2" && aal.currentLevel !== "aal2") redirect("/login?mfa=1")
+  }
+
   const email = typeof claims.email === "string" ? claims.email : ""
 
   const { data: profile } = await supabase

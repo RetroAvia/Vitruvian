@@ -1,4 +1,14 @@
-import type { ActivityLevel, DataSource, LabCategory, MealSlot, Sex } from "@/types/domain"
+import type {
+  ActivityLevel,
+  DataSource,
+  LabCategory,
+  MealSlot,
+  MedicalOutcome,
+  MedicalReportKind,
+  Sex,
+  SupplementForm,
+  SupplementFrequency,
+} from "@/types/domain"
 
 export const APP_NAME = "Vitruvian"
 export const APP_TAGLINE = "Body Composition Intelligence"
@@ -54,3 +64,58 @@ export const LAB_CATEGORY_LABELS: Record<LabCategory, string> = {
   muscle: "Muscolo",
   other: "Altri esami",
 }
+
+export const MEDICAL_KIND_LABELS: Record<MedicalReportKind, string> = {
+  ecg: "Elettrocardiogramma",
+  echo: "Ecocardiogramma",
+  stress_test: "Test da sforzo",
+  holter: "Holter",
+  blood_pressure: "Pressione arteriosa",
+  spirometry: "Spirometria",
+  sports_medical: "Visita medico-sportiva",
+  dexa: "DEXA / MOC",
+  imaging: "Imaging (eco, RX, RM)",
+  specialist: "Visita specialistica",
+  other: "Altro referto",
+}
+
+export const MEDICAL_OUTCOME_LABELS: Record<MedicalOutcome, string> = {
+  normal: "Nella norma",
+  borderline: "Da monitorare",
+  abnormal: "Alterato",
+  unknown: "Non indicato",
+}
+
+export const SUPPLEMENT_FORM_LABELS: Record<SupplementForm, string> = {
+  capsule: "Capsula",
+  tablet: "Compressa",
+  softgel: "Perla",
+  powder: "Polvere",
+  liquid: "Liquido",
+  drops: "Gocce",
+  gummy: "Caramella gommosa",
+  sachet: "Bustina",
+  other: "Altro",
+}
+
+export const SUPPLEMENT_FREQUENCY_LABELS: Record<SupplementFrequency, string> = {
+  daily: "Tutti i giorni",
+  training_days: "Giorni di allenamento",
+  weekly: "Settimanale",
+  as_needed: "Al bisogno",
+  cycle: "A cicli",
+}
+
+/** Momenti di assunzione, nell'ordine della giornata. */
+export const SUPPLEMENT_TIMINGS = {
+  morning: "Al risveglio",
+  empty_stomach: "A digiuno",
+  breakfast: "Colazione",
+  lunch: "Pranzo",
+  pre_workout: "Pre-allenamento",
+  post_workout: "Post-allenamento",
+  with_meal: "Con un pasto",
+  dinner: "Cena",
+  bedtime: "Prima di dormire",
+} as const
+export type SupplementTiming = keyof typeof SUPPLEMENT_TIMINGS

@@ -24,10 +24,23 @@ interface UiState {
   checkupColumns: CheckupColumnGroup[]
   /** Mostra la variazione rispetto alla visita precedente in ogni cella */
   showDeltas: boolean
+  /** Suoni d'interfaccia */
+  soundEnabled: boolean
+  /** Disconnessione automatica dopo N minuti di inattività (0 = mai) */
+  idleLogoutMinutes: number
+  /** Copia locale dei dati per l'avvio istantaneo */
+  offlineCache: boolean
+  /** Consigli segnati come "fatto": id → data (tornano visibili dopo 30 giorni) */
+  dismissedAdvice: Record<string, string>
   toggleSidebar: () => void
   setTimeRange: (range: TimeRange) => void
   toggleCheckupColumn: (group: CheckupColumnGroup) => void
   setShowDeltas: (value: boolean) => void
+  setSoundEnabled: (value: boolean) => void
+  setIdleLogoutMinutes: (value: number) => void
+  setOfflineCache: (value: boolean) => void
+  dismissAdvice: (id: string, date: string) => void
+  restoreAdvice: () => void
 }
 
 export const useUiStore = create<UiState>()(
@@ -37,6 +50,10 @@ export const useUiStore = create<UiState>()(
       timeRange: "all",
       checkupColumns: ["bia", "circ"],
       showDeltas: true,
+      soundEnabled: true,
+      idleLogoutMinutes: 0,
+      offlineCache: true,
+      dismissedAdvice: {},
       toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
       setTimeRange: (timeRange) => set({ timeRange }),
       toggleCheckupColumn: (group) =>
@@ -46,6 +63,11 @@ export const useUiStore = create<UiState>()(
             : [...s.checkupColumns, group],
         })),
       setShowDeltas: (showDeltas) => set({ showDeltas }),
+      setSoundEnabled: (soundEnabled) => set({ soundEnabled }),
+      setIdleLogoutMinutes: (idleLogoutMinutes) => set({ idleLogoutMinutes }),
+      setOfflineCache: (offlineCache) => set({ offlineCache }),
+      dismissAdvice: (id, date) => set((s) => ({ dismissedAdvice: { ...s.dismissedAdvice, [id]: date } })),
+      restoreAdvice: () => set({ dismissedAdvice: {} }),
     }),
     {
       name: "vitruvian-ui",

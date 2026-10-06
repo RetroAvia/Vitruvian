@@ -1,6 +1,9 @@
 import {
   Activity,
   ClipboardList,
+  HeartPulse,
+  Lightbulb,
+  Pill,
   FileText,
   FlaskConical,
   LayoutDashboard,
@@ -48,6 +51,27 @@ export const NAV = {
     description: "Esami, range di riferimento e tendenze",
     icon: FlaskConical,
   },
+  reports: {
+    href: "/reports",
+    label: "Referti medici",
+    short: "Referti",
+    description: "ECG, visite, pressione e altri esami strumentali",
+    icon: HeartPulse,
+  },
+  supplements: {
+    href: "/supplements",
+    label: "Integratori",
+    short: "Integr.",
+    description: "Cosa prendi, quanto e quando — con i limiti di sicurezza",
+    icon: Pill,
+  },
+  advice: {
+    href: "/advice",
+    label: "Consigli",
+    short: "Consigli",
+    description: "Suggerimenti personalizzati incrociando tutti i tuoi dati",
+    icon: Lightbulb,
+  },
   nutrition: {
     href: "/nutrition",
     label: "Nutrizione",
@@ -80,13 +104,13 @@ export const NAV = {
 
 export const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
   { label: "Corpo", items: [NAV.dashboard, NAV.checkups, NAV.trends] },
-  { label: "Salute", items: [NAV.labs] },
+  { label: "Salute", items: [NAV.labs, NAV.reports, NAV.supplements] },
   { label: "Alimentazione", items: [NAV.nutrition] },
-  { label: "Strumenti", items: [NAV.bridge, NAV.report] },
+  { label: "Strumenti", items: [NAV.advice, NAV.bridge, NAV.report] },
 ]
 
-/** Barra inferiore su smartphone: 5 voci (AI Bridge e Report sono nella barra in alto). */
-export const MOBILE_NAV: NavItem[] = [NAV.dashboard, NAV.checkups, NAV.trends, NAV.labs, NAV.nutrition]
+/** Barra inferiore su smartphone: 4 voci + "Altro" (foglio con tutte le sezioni). */
+export const MOBILE_NAV: NavItem[] = [NAV.dashboard, NAV.checkups, NAV.advice, NAV.nutrition]
 
 export const SETTINGS_ITEM = NAV.settings
 export const ALL_NAV_ITEMS: NavItem[] = Object.values(NAV)

@@ -1,8 +1,11 @@
+"use client"
+
 import type { LucideIcon } from "lucide-react"
 
 import type { GlossaryKey } from "@/config/glossary"
 
 import { formatNumber } from "@/lib/format"
+import { useCountUp } from "@/lib/use-count-up"
 import { cn } from "@/lib/utils"
 
 import { DeltaPill, type Polarity } from "./delta-pill"
@@ -50,6 +53,7 @@ export function KpiCard({
   className,
 }: KpiCardProps) {
   const a = ACCENT_CLASSES[accent]
+  const shown = useCountUp(value)
 
   return (
     <GlassCard className={cn("group relative overflow-hidden p-5", className)}>
@@ -70,7 +74,8 @@ export function KpiCard({
         </span>
       </div>
       <p className="relative mt-4 font-display text-3xl font-semibold tabular">
-        {formatNumber(value, digits)}
+        <span className="sr-only">{formatNumber(value, digits)}</span>
+        <span aria-hidden>{formatNumber(shown, digits)}</span>
         {unit && <span className="ml-1 text-base font-medium text-muted-foreground">{unit}</span>}
       </p>
       <div className="relative mt-2 flex flex-wrap items-center gap-2">

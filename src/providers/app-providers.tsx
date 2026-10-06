@@ -1,7 +1,6 @@
 "use client"
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { domMax, LazyMotion, MotionConfig } from "motion/react"
 import { ThemeProvider } from "next-themes"
 import { useEffect, useState, type ReactNode } from "react"
 
@@ -34,15 +33,10 @@ export function AppProviders({ children }: { children: ReactNode }) {
   return (
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} disableTransitionOnChange>
       <QueryClientProvider client={queryClient}>
-        {/* domMax abilita layoutId (indicatore attivo animato della nav) */}
-        <LazyMotion features={domMax} strict>
-          <MotionConfig reducedMotion="user" transition={{ type: "spring", stiffness: 380, damping: 32 }}>
-            <TooltipProvider delayDuration={150}>
-              {children}
-              <Toaster position="top-center" richColors closeButton />
-            </TooltipProvider>
-          </MotionConfig>
-        </LazyMotion>
+        <TooltipProvider delayDuration={150}>
+          {children}
+          <Toaster position="top-center" richColors closeButton />
+        </TooltipProvider>
       </QueryClientProvider>
     </ThemeProvider>
   )

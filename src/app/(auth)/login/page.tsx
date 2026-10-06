@@ -12,13 +12,13 @@ function safeNext(next: string | undefined) {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string }>
+  searchParams: Promise<{ next?: string; mfa?: string }>
 }) {
-  const { next } = await searchParams
+  const { next, mfa } = await searchParams
 
   return (
     <main className="grid min-h-dvh place-items-center px-4 py-10">
-      <LoginForm next={safeNext(next)} />
+      <LoginForm next={safeNext(next)} mfa={mfa === "1"} />
     </main>
   )
 }

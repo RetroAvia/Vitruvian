@@ -1,6 +1,5 @@
 "use client"
 
-import { m } from "motion/react"
 import Link from "next/link"
 
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
@@ -27,18 +26,21 @@ export function NavLink({ item, active, collapsed }: NavLinkProps) {
         collapsed && "justify-center px-0",
       )}
     >
-      {active && (
-        <m.span
-          layoutId="sidebar-active"
-          className="absolute inset-0 rounded-xl bg-neon/10 ring-1 ring-inset ring-neon/30 shadow-[0_0_24px_-6px_var(--neon)]"
-        />
-      )}
-      {active && (
-        <m.span
-          layoutId="sidebar-active-bar"
-          className="absolute -left-3 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-neon shadow-[0_0_12px_var(--neon)]"
-        />
-      )}
+      {/* Indicatore attivo: solo CSS (opacità + scala), nessuna libreria di animazione */}
+      <span
+        aria-hidden
+        className={cn(
+          "absolute inset-0 rounded-xl bg-neon/10 ring-1 ring-inset ring-neon/30 shadow-[0_0_24px_-6px_var(--neon)] transition-all duration-300 ease-out",
+          active ? "scale-100 opacity-100" : "scale-95 opacity-0",
+        )}
+      />
+      <span
+        aria-hidden
+        className={cn(
+          "absolute -left-3 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-neon shadow-[0_0_12px_var(--neon)] transition-all duration-300 ease-out",
+          active ? "opacity-100" : "h-0 opacity-0",
+        )}
+      />
       <Icon
         className={cn(
           "relative size-[18px] shrink-0 transition-colors",

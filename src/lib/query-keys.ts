@@ -13,6 +13,12 @@ export const queryKeys = {
     analytes: ["labs", "analytes"] as const,
     reports: ["labs", "reports"] as const,
   },
+  medical: ["medical-reports"] as const,
+  supplements: {
+    all: ["supplements"] as const,
+    logs: (from: string) => ["supplements", "logs", from] as const,
+    allLogs: ["supplements", "logs"] as const,
+  },
   diet: {
     plans: ["diet", "plans"] as const,
     tree: (id: string) => ["diet", "tree", id] as const,

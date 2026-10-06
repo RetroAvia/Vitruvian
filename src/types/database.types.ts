@@ -27,6 +27,7 @@ export type Database = {
           target_ffm_kg: number | null
           goals_start_date: string | null
           target_date: string | null
+          last_backup_at: string | null
           id: string
           display_name: string | null
           sex: Database["public"]["Enums"]["sex_type"] | null
@@ -44,6 +45,7 @@ export type Database = {
           target_ffm_kg?: number | null
           goals_start_date?: string | null
           target_date?: string | null
+          last_backup_at?: string | null
           id: string
           display_name?: string | null
           sex?: Database["public"]["Enums"]["sex_type"] | null
@@ -61,6 +63,7 @@ export type Database = {
           target_ffm_kg?: number | null
           goals_start_date?: string | null
           target_date?: string | null
+          last_backup_at?: string | null
           id?: string
           display_name?: string | null
           sex?: Database["public"]["Enums"]["sex_type"] | null
@@ -667,6 +670,174 @@ export type Database = {
         }
         Relationships: []
       }
+      medical_reports: {
+        Row: {
+          id: string
+          user_id: string
+          report_date: string
+          kind: Database["public"]["Enums"]["medical_report_kind"]
+          title: string
+          facility: string | null
+          physician: string | null
+          summary: string | null
+          conclusion: string | null
+          outcome: Database["public"]["Enums"]["medical_outcome"]
+          measurements: Json
+          findings: string[]
+          recommendations: string[]
+          next_check_date: string | null
+          notes: string | null
+          source: Database["public"]["Enums"]["data_source"]
+          raw_payload: Json | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id?: string
+          report_date: string
+          kind?: Database["public"]["Enums"]["medical_report_kind"]
+          title: string
+          facility?: string | null
+          physician?: string | null
+          summary?: string | null
+          conclusion?: string | null
+          outcome?: Database["public"]["Enums"]["medical_outcome"]
+          measurements?: Json
+          findings?: string[]
+          recommendations?: string[]
+          next_check_date?: string | null
+          notes?: string | null
+          source?: Database["public"]["Enums"]["data_source"]
+          raw_payload?: Json | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          report_date?: string
+          kind?: Database["public"]["Enums"]["medical_report_kind"]
+          title?: string
+          facility?: string | null
+          physician?: string | null
+          summary?: string | null
+          conclusion?: string | null
+          outcome?: Database["public"]["Enums"]["medical_outcome"]
+          measurements?: Json
+          findings?: string[]
+          recommendations?: string[]
+          next_check_date?: string | null
+          notes?: string | null
+          source?: Database["public"]["Enums"]["data_source"]
+          raw_payload?: Json | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      supplements: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          brand: string | null
+          form: string
+          dose_label: string | null
+          servings_per_day: number
+          timing: string[]
+          frequency: string
+          days_per_week: number | null
+          ingredients: Json
+          purpose: string | null
+          notes: string | null
+          start_date: string | null
+          end_date: string | null
+          is_active: boolean
+          sort_order: number
+          source: Database["public"]["Enums"]["data_source"]
+          raw_payload: Json | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id?: string
+          name: string
+          brand?: string | null
+          form?: string
+          dose_label?: string | null
+          servings_per_day?: number
+          timing?: string[]
+          frequency?: string
+          days_per_week?: number | null
+          ingredients?: Json
+          purpose?: string | null
+          notes?: string | null
+          start_date?: string | null
+          end_date?: string | null
+          is_active?: boolean
+          sort_order?: number
+          source?: Database["public"]["Enums"]["data_source"]
+          raw_payload?: Json | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          brand?: string | null
+          form?: string
+          dose_label?: string | null
+          servings_per_day?: number
+          timing?: string[]
+          frequency?: string
+          days_per_week?: number | null
+          ingredients?: Json
+          purpose?: string | null
+          notes?: string | null
+          start_date?: string | null
+          end_date?: string | null
+          is_active?: boolean
+          sort_order?: number
+          source?: Database["public"]["Enums"]["data_source"]
+          raw_payload?: Json | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      supplement_logs: {
+        Row: {
+          id: string
+          user_id: string
+          supplement_id: string
+          log_date: string
+          taken: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id?: string
+          supplement_id: string
+          log_date?: string
+          taken?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          supplement_id?: string
+          log_date?: string
+          taken?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       v_checkups: {
@@ -779,6 +950,14 @@ export type Database = {
         Args: { p: Json }
         Returns: string[]
       }
+      import_medical_reports: {
+        Args: { p: Json }
+        Returns: string[]
+      }
+      import_supplements: {
+        Args: { p: Json }
+        Returns: string[]
+      }
       import_checkups: {
         Args: { p: Json }
         Returns: string[]
@@ -792,7 +971,7 @@ export type Database = {
       activity_level: "sedentary" | "light" | "moderate" | "active" | "very_active"
       body_side: "none" | "left" | "right"
       data_source: "manual" | "ai_import" | "sheet_import"
-      import_kind: "checkup" | "diet" | "lab"
+      import_kind: "checkup" | "diet" | "lab" | "medical" | "supplement"
       import_status: "pending" | "applied" | "rejected" | "failed"
       lab_category:
         | "metabolic"
@@ -809,6 +988,19 @@ export type Database = {
         | "muscle"
         | "other"
       lab_flag: "low" | "normal" | "high" | "unknown"
+      medical_outcome: "normal" | "borderline" | "abnormal" | "unknown"
+      medical_report_kind:
+        | "ecg"
+        | "echo"
+        | "stress_test"
+        | "holter"
+        | "blood_pressure"
+        | "spirometry"
+        | "sports_medical"
+        | "dexa"
+        | "imaging"
+        | "specialist"
+        | "other"
       meal_log_status: "done" | "skipped" | "swapped"
       meal_slot:
         | "breakfast"
@@ -844,7 +1036,7 @@ export const Constants = {
       activity_level: ["sedentary", "light", "moderate", "active", "very_active"],
       body_side: ["none", "left", "right"],
       data_source: ["manual", "ai_import", "sheet_import"],
-      import_kind: ["checkup", "diet", "lab"],
+      import_kind: ["checkup", "diet", "lab", "medical", "supplement"],
       import_status: ["pending", "applied", "rejected", "failed"],
       lab_category: [
         "metabolic",
@@ -862,6 +1054,20 @@ export const Constants = {
         "other",
       ],
       lab_flag: ["low", "normal", "high", "unknown"],
+      medical_outcome: ["normal", "borderline", "abnormal", "unknown"],
+      medical_report_kind: [
+        "ecg",
+        "echo",
+        "stress_test",
+        "holter",
+        "blood_pressure",
+        "spirometry",
+        "sports_medical",
+        "dexa",
+        "imaging",
+        "specialist",
+        "other",
+      ],
       meal_log_status: ["done", "skipped", "swapped"],
       meal_slot: [
         "breakfast",

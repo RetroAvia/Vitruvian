@@ -6,7 +6,10 @@ import { cn } from "@/lib/utils"
 import { useUiStore } from "@/stores/ui-store"
 import type { SessionUser } from "@/types/domain"
 
+import { CommandPalette } from "./command-palette"
+import { IdleLogout } from "./idle-logout"
 import { MobileNav } from "./mobile-nav"
+import { QueryPersistence } from "./query-persistence"
 import { Sidebar } from "./sidebar"
 import { Topbar } from "./topbar"
 import { SessionUserProvider } from "./session-user-context"
@@ -42,6 +45,9 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
       </div>
 
       <MobileNav />
+      <CommandPalette />
+      <IdleLogout />
+      <QueryPersistence userId={user.id} />
     </SessionUserProvider>
   )
 }

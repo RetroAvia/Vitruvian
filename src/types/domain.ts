@@ -14,6 +14,8 @@ export type MealSlot = Enums<"meal_slot">
 export type MealLogStatus = Enums<"meal_log_status">
 export type LabCategory = Enums<"lab_category">
 export type LabFlag = Enums<"lab_flag">
+export type MedicalReportKind = Enums<"medical_report_kind">
+export type MedicalOutcome = Enums<"medical_outcome">
 
 /* ----------------------------- Righe ---------------------------- */
 export type Profile = Tables<"profiles">
@@ -37,6 +39,40 @@ export type LabResult = NonNullableKeys<
   Tables<"v_lab_results">,
   "id" | "report_id" | "report_date" | "analyte_id" | "code" | "name" | "category" | "digits" | "sort_order"
 >
+
+/* ------------------------ Referti medici ------------------------ */
+export interface MedicalMeasurement {
+  code: string
+  label: string
+  value: number | null
+  value_text?: string | null
+  unit?: string | null
+  ref_low?: number | null
+  ref_high?: number | null
+}
+
+export type MedicalReport = Omit<Tables<"medical_reports">, "measurements"> & {
+  measurements: MedicalMeasurement[]
+}
+
+/* -------------------------- Integratori -------------------------- */
+export type SupplementForm = "capsule" | "tablet" | "softgel" | "powder" | "liquid" | "drops" | "gummy" | "sachet" | "other"
+export type SupplementFrequency = "daily" | "training_days" | "weekly" | "as_needed" | "cycle"
+
+export interface SupplementIngredient {
+  code: string
+  name: string
+  amount: number | null
+  unit: string | null
+}
+
+export type Supplement = Omit<Tables<"supplements">, "ingredients" | "form" | "frequency"> & {
+  form: SupplementForm
+  frequency: SupplementFrequency
+  ingredients: SupplementIngredient[]
+}
+
+export type SupplementLog = Tables<"supplement_logs">
 
 export type CircumferencePoint = NonNullableKeys<
   Tables<"v_circumference_series">,

@@ -14,6 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { clearLocalData } from "@/lib/local-cache"
 import { createClient } from "@/lib/supabase/client"
 
 import { useSessionUser } from "./session-user-context"
@@ -38,7 +39,7 @@ export function UserMenu() {
       toast.error("Logout non riuscito", { description: error.message })
       return
     }
-    queryClient.clear()
+    clearLocalData(queryClient)
     router.replace("/login")
     router.refresh()
   }

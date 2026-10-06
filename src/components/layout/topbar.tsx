@@ -1,6 +1,6 @@
 "use client"
 
-import { ChevronRight, Plus, Sparkles } from "lucide-react"
+import { ChevronRight, Plus, Search, Sparkles } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 
@@ -10,6 +10,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { findNavItem } from "@/config/nav"
 import { formatDate, todayISO } from "@/lib/format"
 
+import { openCommandPalette } from "./command-palette"
 import { ThemeToggle } from "./theme-toggle"
 import { UserMenu } from "./user-menu"
 
@@ -37,6 +38,17 @@ export function Topbar() {
             {new Intl.DateTimeFormat("it-IT", { weekday: "long" }).format(new Date())} {formatDate(todayISO(), "long")}
           </span>
         </nav>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          className="rounded-xl text-muted-foreground"
+          onClick={openCommandPalette}
+          aria-label="Cerca sezioni e azioni (Ctrl+K)"
+        >
+          <Search className="size-4" />
+          <kbd className="hidden rounded-md border px-1.5 py-0.5 font-sans text-[10px] lg:inline">Ctrl K</kbd>
+        </Button>
 
         <Tooltip>
           <TooltipTrigger asChild>

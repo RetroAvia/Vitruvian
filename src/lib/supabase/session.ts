@@ -11,12 +11,16 @@ import { env } from "@/lib/env"
 import type { Database } from "@/types/database.types"
 
 const PUBLIC_PATHS = ["/login", "/manifest.webmanifest"]
+/** Endpoint senza sessione utente, protetti da un proprio segreto (es. cron). */
+const OPEN_API = ["/api/keepalive"]
 
 function isPublic(pathname: string) {
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))
 }
 
 export async function updateSession(request: NextRequest) {
+  if (OPEN_API.some((p) => request.nextUrl.pathname === p)) return NextResponse.next({ request })
+
   let response = NextResponse.next({ request })
 
   const supabase = createServerClient<Database>(env.supabaseUrl, env.supabaseKey, {
@@ -52,7 +56,9 @@ export async function updateSession(request: NextRequest) {
     return redirectTo("/login", pathname === "/" ? undefined : { next: `${pathname}${search}` })
   }
 
-  if (isAuthenticated && isPublic(pathname)) {
+  // Passaggio MFA: utente con password verificata ma senza codice → resta sul login
+  const mfaStep = pathname === "/login" && request.nextUrl.searchParams.get("mfa") === "1"
+  if (isAuthenticated && isPublic(pathname) && !mfaStep) {
     return redirectTo("/dashboard")
   }
 

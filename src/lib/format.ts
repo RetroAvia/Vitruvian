@@ -58,3 +58,11 @@ export function todayISO(): string {
   const pad = (n: number) => String(n).padStart(2, "0")
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
+
+/** Data ISO spostata di N giorni (negativo = nel passato). */
+export function shiftISO(iso: string, days: number): string {
+  const d = parseISODate(iso)
+  d.setDate(d.getDate() + days)
+  const pad = (n: number) => String(n).padStart(2, "0")
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
