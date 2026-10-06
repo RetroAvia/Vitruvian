@@ -31,6 +31,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
 import { useBiaProtocols, useCheckups } from "@/features/checkups/api/queries"
 import { formatDate } from "@/lib/format"
+import { playSound } from "@/lib/sound"
 import type { BiaProtocol } from "@/types/domain"
 
 import { useDeleteProtocol, useSaveProtocol } from "../api/protocols"
@@ -92,9 +93,11 @@ export function ProtocolsCard() {
     if (!deleting) return
     try {
       await del.mutateAsync(deleting.id)
+      playSound("success")
       toast.success("Protocollo eliminato")
       setDeleting(null)
     } catch (e) {
+      playSound("error")
       toast.error("Eliminazione non riuscita", { description: e instanceof Error ? e.message : undefined })
     }
   }
@@ -222,9 +225,11 @@ function ProtocolForm({ protocol, onDone }: { protocol?: BiaProtocol; onDone: ()
           notes: v.notes || null,
         },
       })
+      playSound("success")
       toast.success(protocol ? "Strumento aggiornato" : "Strumento creato")
       onDone()
     } catch (e) {
+      playSound("error")
       toast.error("Salvataggio non riuscito", { description: e instanceof Error ? e.message : undefined })
     }
   })

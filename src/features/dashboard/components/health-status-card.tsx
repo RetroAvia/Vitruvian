@@ -2,7 +2,6 @@
 
 import { CircleCheck, ClipboardCopy, FileText, Info, ShieldAlert, TriangleAlert, type LucideIcon } from "lucide-react"
 import Link from "next/link"
-import { AnimatePresence, m } from "motion/react"
 import { useState } from "react"
 import { toast } from "sonner"
 
@@ -79,19 +78,11 @@ export function HealthStatusCard({ insights, notes }: { insights: Insight[]; not
       </div>
 
       <ul className="mt-4 space-y-2">
-        <AnimatePresence initial={false} mode="popLayout">
           {visible.map((i) => {
             const k = KIND[i.kind]
             const Icon = k.icon
             return (
-              <m.li
-                key={i.id}
-                layout
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                className="surface-inset flex gap-3 rounded-xl p-3"
-              >
+              <li key={i.id} className="animate-page-in surface-inset flex gap-3 rounded-xl p-3">
                 <span className={cn("grid size-8 shrink-0 place-items-center rounded-lg ring-1 ring-inset", k.className)}>
                   <Icon className="size-4" aria-hidden />
                 </span>
@@ -102,10 +93,9 @@ export function HealthStatusCard({ insights, notes }: { insights: Insight[]; not
                   </p>
                   <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{i.detail}</p>
                 </div>
-              </m.li>
+              </li>
             )
           })}
-        </AnimatePresence>
         {visible.length === 0 && <li className="py-6 text-center text-xs text-muted-foreground">Nessuna osservazione.</li>}
       </ul>
       {filtered.length > COLLAPSED && (

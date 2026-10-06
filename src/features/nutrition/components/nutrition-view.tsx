@@ -23,6 +23,7 @@ import { NativeSelect } from "@/components/ui/native-select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useBiometricReport } from "@/features/biometrics/hooks/use-biometric-report"
 import { formatDate, todayISO } from "@/lib/format"
+import { playSound } from "@/lib/sound"
 import { cn } from "@/lib/utils"
 
 import { useActivatePlan, useDeletePlan, useDietPlans, useMealLogs, usePlanTree, useSetMealLog } from "../api/nutrition"
@@ -148,8 +149,10 @@ export function NutritionView() {
       await del.mutateAsync(plan.id)
       setSelectedPlan(null)
       setConfirmDelete(false)
+      playSound("success")
       toast.success("Piano eliminato")
     } catch (e) {
+      playSound("error")
       toast.error("Eliminazione non riuscita", { description: e instanceof Error ? e.message : undefined })
     }
   }
@@ -245,12 +248,13 @@ export function NutritionView() {
               setDayChoice(null)
             }}
             logs={logsQ.data ?? []}
-            onSet={(mealId, status) =>
+            onSet={(mealId, status) => {
+              playSound(status === "done" ? "check" : status ? "tap" : "uncheck")
               setLog.mutate(
                 { mealId, date, status },
                 { onError: (e) => toast.error("Non salvato", { description: e.message }) },
               )
-            }
+            }}
           />
           <div className="space-y-4">
             <EnergyBalanceCard balance={analysis.balance} source={analysis.source} />

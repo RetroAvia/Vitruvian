@@ -1,6 +1,7 @@
 "use client"
 
-import { Activity, CalendarClock, Gauge, LayoutDashboard, ScanLine, Stethoscope, TriangleAlert } from "lucide-react"
+import dynamic from "next/dynamic"
+import { Activity, CalendarClock, Compass, Gauge, LayoutDashboard, ScanLine, Stethoscope, TriangleAlert } from "lucide-react"
 import Link from "next/link"
 
 import { TimeRangeControl } from "@/components/charts/time-range-control"
@@ -13,13 +14,16 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useBiometricReport } from "@/features/biometrics/hooks/use-biometric-report"
 import { formatDate } from "@/lib/format"
 
-import { CompositionChart } from "./composition-chart"
 import { EnergyCard } from "./energy-card"
 import { HealthStatusCard } from "./health-status-card"
 import { HeroCard } from "./hero-card"
 import { KpiSection } from "./kpi-section"
 import { RecompositionHistory } from "./recomposition-history"
-import { WeightChart } from "./weight-chart"
+import { TodayCard } from "./today-card"
+
+// Grafici caricati su richiesta: Recharts non pesa sul primo caricamento
+const CompositionChart = dynamic(() => import("./composition-chart").then((m) => m.CompositionChart), { ssr: false, loading: () => <Skeleton className="h-[420px] rounded-2xl" /> })
+const WeightChart = dynamic(() => import("./weight-chart").then((m) => m.WeightChart), { ssr: false, loading: () => <Skeleton className="h-[360px] rounded-2xl" /> })
 
 const STALE_DAYS = 120
 
@@ -112,6 +116,16 @@ export function DashboardView() {
           )}
           <HeroCard report={report} profile={profile} user={user} />
         </div>
+
+        <section aria-labelledby="sec-today">
+          <SectionHeader
+            id="sec-today"
+            icon={Compass}
+            title="Il tuo quadro"
+            description="Indice di salute, le azioni più utili adesso e cosa c'è in programma oggi."
+          />
+          <TodayCard />
+        </section>
 
         <section aria-labelledby="sec-kpi">
           <SectionHeader

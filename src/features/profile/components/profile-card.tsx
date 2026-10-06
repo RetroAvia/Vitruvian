@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { ACTIVITY_LEVELS, SEX_LABELS } from "@/config/constants"
 import { ageAt } from "@/features/biometrics/engine/indices"
 import { todayISO } from "@/lib/format"
+import { playSound } from "@/lib/sound"
 import type { ActivityLevel, Sex } from "@/types/domain"
 
 import { useProfile, useUpdateProfile } from "../api/profile"
@@ -61,8 +62,10 @@ export function ProfileCard() {
         goal: v.goal.trim() || null,
       })
       reset(profileToFormInput(saved))
+      playSound("success")
       toast.success("Profilo aggiornato")
     } catch (e) {
+      playSound("error")
       toast.error("Salvataggio non riuscito", { description: e instanceof Error ? e.message : undefined })
     }
   })

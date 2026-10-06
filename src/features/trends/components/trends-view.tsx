@@ -1,5 +1,6 @@
 "use client"
 
+import dynamic from "next/dynamic"
 import { Activity, Gauge, Layers, Ruler, ScanLine, TriangleAlert } from "lucide-react"
 import { useMemo } from "react"
 
@@ -13,10 +14,12 @@ import { METRICS } from "@/features/biometrics/engine/metrics"
 import { useBiometricReport } from "@/features/biometrics/hooks/use-biometric-report"
 import { useUiStore } from "@/stores/ui-store"
 
-import { CircumferenceChart } from "./circumference-chart"
-import { MetricSparklineCard } from "./metric-sparkline-card"
-import { RecompositionMap } from "./recomposition-map"
 import { SegmentsTable } from "./segments-table"
+
+// Grafici caricati su richiesta: Recharts non pesa sul primo caricamento
+const CircumferenceChart = dynamic(() => import("./circumference-chart").then((m) => m.CircumferenceChart), { ssr: false, loading: () => <Skeleton className="h-[420px] rounded-2xl" /> })
+const MetricSparklineCard = dynamic(() => import("./metric-sparkline-card").then((m) => m.MetricSparklineCard), { ssr: false, loading: () => <Skeleton className="h-40 rounded-2xl" /> })
+const RecompositionMap = dynamic(() => import("./recomposition-map").then((m) => m.RecompositionMap), { ssr: false, loading: () => <Skeleton className="h-[380px] rounded-2xl" /> })
 
 export function TrendsView() {
   const { report, isPending, error } = useBiometricReport()

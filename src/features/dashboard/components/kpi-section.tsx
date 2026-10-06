@@ -1,7 +1,6 @@
 "use client"
 
 import { Activity, Droplets, Dumbbell, Flame, Gauge, Percent, Ruler, Scale, type LucideIcon } from "lucide-react"
-import { m, type Variants } from "motion/react"
 import { useState } from "react"
 
 import { Segmented } from "@/components/charts/chart-card"
@@ -25,11 +24,6 @@ const KPIS: Array<{ key: MetricKey; icon: LucideIcon; accent: Accent; info: Glos
   { key: "tbw_pct", icon: Droplets, accent: "bia", info: "tbw" },
 ]
 
-const item: Variants = {
-  hidden: { opacity: 0, y: 12 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.35, ease: [0.22, 1, 0.36, 1] } },
-}
-
 export function KpiSection({ report }: { report: BiometricReport }) {
   const [base, setBase] = useState<DeltaBase>("previous")
   const latest = report.latest as Checkup
@@ -52,12 +46,7 @@ export function KpiSection({ report }: { report: BiometricReport }) {
           ]}
         />
       </div>
-      <m.div
-        className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
-        initial="hidden"
-        animate="show"
-        variants={{ show: { transition: { staggerChildren: 0.05 } } }}
-      >
+      <div className="stagger grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {KPIS.map(({ key, icon, accent, info }) => {
           const metric = METRICS[key]
           const target = metric.bia ? latestBia : latest
@@ -68,8 +57,9 @@ export function KpiSection({ report }: { report: BiometricReport }) {
               ? `${DELTA_BASE_LABELS[base]} · ${formatDate(d.from.checkup_date, "monthYear")}`
               : "nessun confronto"
           return (
-            <m.div key={key} variants={item}>
-              <KpiCard
+            <KpiCard
+                key={key}
+                className="hover-lift"
                 label={metric.unit === "%" && key === "fat_pct" ? "Massa grassa" : metric.label}
                 value={metric.get(target)}
                 unit={metric.unit || undefined}
@@ -81,10 +71,9 @@ export function KpiSection({ report }: { report: BiometricReport }) {
                 caption={caption}
                 info={info}
               />
-            </m.div>
           )
         })}
-      </m.div>
+      </div>
     </section>
   )
 }

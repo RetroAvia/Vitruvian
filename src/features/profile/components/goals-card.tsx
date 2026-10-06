@@ -16,6 +16,7 @@ import { useCheckups } from "@/features/checkups/api/queries"
 import { goalsUnavailable } from "@/features/biometrics/engine/goals"
 import { parseDecimal, toInputValue } from "@/features/checkups/schemas/checkup-form"
 import { formatDate, formatNumber, todayISO } from "@/lib/format"
+import { playSound } from "@/lib/sound"
 import type { Profile } from "@/types/domain"
 
 import { useProfile, useUpdateProfile } from "../api/profile"
@@ -72,8 +73,10 @@ export function GoalsCard() {
         goals_start_date: v.restart || !profile?.goals_start_date ? todayISO() : profile.goals_start_date,
       })
       reset(toForm(saved))
+      playSound("success")
       toast.success("Obiettivi salvati", { description: "L'avanzamento è visibile in dashboard." })
     } catch (e) {
+      playSound("error")
       toast.error("Salvataggio non riuscito", { description: e instanceof Error ? e.message : undefined })
     }
   })

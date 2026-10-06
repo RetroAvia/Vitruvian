@@ -1,5 +1,6 @@
 "use client"
 
+import dynamic from "next/dynamic"
 import { FlaskConical, LoaderCircle, Search, Sparkles, Trash2, TriangleAlert } from "lucide-react"
 import Link from "next/link"
 import { useMemo, useState } from "react"
@@ -27,13 +28,16 @@ import { analyzeLabs } from "@/features/labs/engine/report"
 import type { AnalyteSeries } from "@/features/labs/engine/series"
 import { useProfile } from "@/features/profile/api/profile"
 import { formatDate, formatNumber, formatSigned, isNum } from "@/lib/format"
+import { playSound } from "@/lib/sound"
 import { cn } from "@/lib/utils"
 import type { LabCategory, LabReport } from "@/types/domain"
 
 import { useDeleteLabReport, useLabReports, useLabResults } from "../api/labs"
-import { AnalyteDialog } from "./analyte-dialog"
 import { LabStatusBadge } from "./lab-status"
 import { RangeSparkline } from "./range-sparkline"
+
+// Grafici caricati su richiesta: Recharts non pesa sul primo caricamento
+const AnalyteDialog = dynamic(() => import("./analyte-dialog").then((m) => m.AnalyteDialog), { ssr: false, loading: () => null })
 
 export function LabsView() {
   const resultsQ = useLabResults()
@@ -321,9 +325,11 @@ function DeleteReportDialog({ report, onOpenChange }: { report: LabReport | null
     if (!report) return
     try {
       await del.mutateAsync(report.id)
+      playSound("success")
       toast.success("Referto eliminato")
       onOpenChange(false)
     } catch (e) {
+      playSound("error")
       toast.error("Eliminazione non riuscita", { description: e instanceof Error ? e.message : undefined })
     }
   }
