@@ -11,6 +11,7 @@ import { useImportDietPlan } from "@/features/nutrition/api/nutrition"
 import { dayTotals, macroKcal, mealTotals } from "@/features/nutrition/engine/totals"
 import type { DayWithMeals, MealWithItems } from "@/features/nutrition/types"
 import { formatNumber, isNum } from "@/lib/format"
+import { playSound } from "@/lib/sound"
 
 import { useParsedImport } from "../lib/use-parsed-import"
 import { buildDietPrompt } from "../prompts/diet-prompt"
@@ -110,8 +111,10 @@ export function DietBridge() {
       await importM.mutateAsync({ ...parsed.data, schema: "vitruvian.diet.v1", activate, source: "ai_import" })
       setDone(true)
       setText("")
+      playSound("success")
       toast.success("Piano alimentare importato")
     } catch (e) {
+      playSound("error")
       toast.error("Import non riuscito", { description: e instanceof Error ? e.message : undefined })
     }
   }

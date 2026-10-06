@@ -13,6 +13,7 @@ import { useBiaProtocols, useCheckups, useMeasurementSites } from "@/features/ch
 import { checkPlausibility, findPreviousCheckup } from "@/features/checkups/lib/plausibility"
 import { toInputValue, type CheckupFormInput } from "@/features/checkups/schemas/checkup-form"
 import { formatDate, formatNumber } from "@/lib/format"
+import { playSound } from "@/lib/sound"
 import { cn } from "@/lib/utils"
 import type { Json } from "@/types/database.types"
 
@@ -102,8 +103,10 @@ export function CheckupBridge() {
       const ids = await importM.mutateAsync(payload as unknown as Json)
       setDone(ids.length)
       setText("")
+      playSound("success")
       toast.success(`${ids.length} ${ids.length === 1 ? "visita importata" : "visite importate"}`)
     } catch (e) {
+      playSound("error")
       toast.error("Import non riuscito", { description: e instanceof Error ? e.message : undefined })
     }
   }

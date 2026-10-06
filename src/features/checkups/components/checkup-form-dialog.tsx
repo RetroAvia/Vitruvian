@@ -2,7 +2,6 @@
 
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Activity, CalendarDays, ChevronDown, LoaderCircle, Ruler, ScanLine, TriangleAlert } from "lucide-react"
-import { AnimatePresence, m } from "motion/react"
 import Link from "next/link"
 import { useMemo, useState, type KeyboardEvent } from "react"
 import { useForm, useWatch } from "react-hook-form"
@@ -17,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { CORE_SITES } from "@/config/constants"
 import { bmi, fatFreeMassKg, fatMassKg, ffmi, ratio } from "@/features/biometrics/engine/indices"
 import { formatDate, formatNumber } from "@/lib/format"
+import { playSound } from "@/lib/sound"
 import { cn } from "@/lib/utils"
 import type { BiaProtocol, Checkup, MeasurementSite } from "@/types/domain"
 
@@ -145,6 +145,7 @@ function CheckupForm({ checkup, checkups, sites, protocols, heightCm, onDone, on
     async (v) => {
       try {
         await save.mutateAsync(formValuesToPayload(v, checkup?.id ?? null))
+        playSound("success")
         toast.success(isEdit ? "Visita aggiornata" : "Visita salvata", {
           description: formatDate(v.checkup_date, "long"),
         })
@@ -152,6 +153,7 @@ function CheckupForm({ checkup, checkups, sites, protocols, heightCm, onDone, on
       } catch (e) {
         const message = e instanceof Error ? e.message : "Errore sconosciuto"
         if (message.startsWith("Esiste già")) setError("checkup_date", { message })
+        playSound("error")
         toast.error("Salvataggio non riuscito", { description: message })
       }
     },
@@ -266,20 +268,21 @@ function CheckupForm({ checkup, checkups, sites, protocols, heightCm, onDone, on
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
             {BIA_PRIMARY_FIELDS.map((f) => numberField(f.name, f.label, f.unit || undefined))}
           </div>
-          <AnimatePresence initial={false}>
-            {showMoreBia && (
-              <m.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: "auto", opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                className="overflow-hidden"
-              >
-                <div className="grid grid-cols-2 gap-4 pt-1 sm:grid-cols-4">
-                  {BIA_SECONDARY_FIELDS.map((f) => numberField(f.name, f.label, f.unit || undefined))}
-                </div>
-              </m.div>
+          {/* Apertura animata solo con CSS (grid-template-rows 0fr → 1fr) */}
+          <div
+            className={cn(
+              "grid transition-[grid-template-rows,opacity] duration-300 ease-out",
+              showMoreBia ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
             )}
-          </AnimatePresence>
+            aria-hidden={!showMoreBia}
+            inert={!showMoreBia}
+          >
+            <div className="overflow-hidden">
+              <div className="grid grid-cols-2 gap-4 pt-1 sm:grid-cols-4">
+                {BIA_SECONDARY_FIELDS.map((f) => numberField(f.name, f.label, f.unit || undefined))}
+              </div>
+            </div>
+          </div>
         </FormSection>
 
         <FormSection

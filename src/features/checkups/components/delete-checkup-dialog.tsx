@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import { formatDate, formatNumber } from "@/lib/format"
+import { playSound } from "@/lib/sound"
 import type { Checkup } from "@/types/domain"
 
 import { useDeleteCheckup, useSaveCheckup } from "../api/mutations"
@@ -50,6 +51,7 @@ export function DeleteCheckupDialog({ checkup, onOpenChange }: Props) {
     try {
       await del.mutateAsync(checkup.id)
       onOpenChange(false)
+      playSound("success")
       toast.success("Visita eliminata", {
         description: formatDate(checkup.checkup_date, "long"),
         duration: 8000,
@@ -66,6 +68,7 @@ export function DeleteCheckupDialog({ checkup, onOpenChange }: Props) {
           : undefined,
       })
     } catch (e) {
+      playSound("error")
       toast.error("Eliminazione non riuscita", { description: e instanceof Error ? e.message : undefined })
     }
   }

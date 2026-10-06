@@ -12,6 +12,7 @@ import { LabStatusBadge } from "@/features/labs/components/lab-status"
 import { flagOf } from "@/features/labs/engine/status"
 import { useProfile } from "@/features/profile/api/profile"
 import { formatDate, formatNumber, isNum } from "@/lib/format"
+import { playSound } from "@/lib/sound"
 import { cn } from "@/lib/utils"
 
 import { useParsedImport } from "../lib/use-parsed-import"
@@ -80,8 +81,10 @@ export function LabBridge() {
       const ids = await importM.mutateAsync({ ...parsed.data, schema: "vitruvian.labs.v1" })
       setDone(ids.length)
       setText("")
+      playSound("success")
       toast.success(`${ids.length} ${ids.length === 1 ? "referto importato" : "referti importati"}`)
     } catch (e) {
+      playSound("error")
       toast.error("Import non riuscito", { description: e instanceof Error ? e.message : undefined })
     }
   }
