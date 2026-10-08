@@ -132,6 +132,36 @@ Le soglie stanno in `config/thresholds.ts`, non sparse nel codice.
 5. ✅ AI Bridge visite + analisi del sangue (migrazione 0003) (prompt generator + parser Zod + anteprima diff)
 6. ✅ Nutrizione (prompt dieta, visualizzatore piano, checklist, macro vs TDEE)
 7. ✅ Referti medici, integratori, motore dei consigli, previsioni, backup, MFA (migrazioni 0005–0006)
+8. ✅ Allenamento: schede, registro sessioni, progressi, analisi fisico ↔ allenamento (migrazione 0007)
+9. ✅ Allenamento v2 (archiviazione compatta, tecniche, editor, registro a schermo intero), mappa corporea, ottimizzazioni (migrazione 0008)
+
+## 9. Archiviazione delle sessioni (0008)
+
+`workouts.exercises` = `[{ c, n, s: [[reps, kg, rpe, tipo]], m }]` (tipo 0 allenante · 1 riscaldamento · 2 drop · 3 rest-pause · 4 cedimento).
+Il trigger `workout_summary` calcola `summary` (per esercizio: serie, ripetizioni, volume, massimale stimato, serie migliore), `total_sets`, `total_volume`.
+
+| Query | Cosa scarica | Quando |
+|---|---|---|
+| `useWorkouts` | intestazione + `summary` di tutte le sessioni | sempre (pochi KB anche dopo anni) |
+| `useRecentWorkoutDetails` | serie complete delle ultime 8 settimane | registro (precompilazione, suggerimenti) |
+| `useWorkoutDetail(id)` | una sessione completa | apertura nello storico / modifica |
+
+Motore: progressi e volume lavorano sui riepiloghi; `lastPerformance` usa le serie recenti e, per esercizi non fatti di recente, la serie migliore del riepilogo.
+
+## 10. Mappa corporea
+
+`components/body/body-geometry.ts` (poligoni low-poly fronte/retro, specchiati) è condivisa da `BodyMap` (olografica, interattiva) e `MuscleFigure` (miniature degli esercizi). Effetti solo CSS: inclinazione col puntatore (desktop), rotazione fronte/retro, scansione in pausa fuori schermo.
+
+## 8. Allenamento
+
+| Modulo | Cosa fa |
+|---|---|
+| `training/engine/catalog.ts` | ~80 esercizi con codice, muscolo principale/secondari, schema motorio; esercizi di focus per muscolo; fasce di volume |
+| `training/engine/analysis.ts` | Volume settimanale (serie principali 1, secondarie 0,5) da scheda e da sessioni, frequenza, massimale stimato (Epley ≤ 12 rip.), progressione con regressione su 8 settimane, giorno previsto oggi, costanza |
+| `training/engine/physique.ts` | Circonferenze (media sx/dx), proporzioni classiche, asimmetrie, crescita a 6 mesi → carenze pesate (proporzioni + volume + crescita) con esercizi consigliati e punti forti; equilibrio della programmazione |
+| `training/engine/report.ts` | Report unico + osservazioni |
+
+RPC: `import_training(jsonb)` (scheda per nome, re-import sicuro che ricollega le sessioni ai giorni; storico idempotente per data+titolo) e `save_workout(jsonb)` (registro, semantica replace).
 
 ## 7. Motore dei consigli (aggiornamento 2)
 
@@ -152,3 +182,9 @@ Le soglie stanno in `config/thresholds.ts`, non sparse nel codice.
 - Backup: export di tutte le tabelle (JSON), ripristino tramite le RPC di import in modalità unione.
 - Keep-alive: Vercel Cron → `/api/keepalive` (protetto da `CRON_SECRET`).
 - CSP in produzione: il browser può contattare solo il sito e Supabase.
+
+## 11. Sessione globale e offline (0009)
+- `features/training/session/`: `workout-session` (store zustand: richiesta today/day/repeat/edit), `workout-host` (registro caricato alla prima apertura + pillola "in corso"), `storage` (bozza e outbox in localStorage, chiavi per utente, evento `vitruvian:workout-storage`), `outbox-sync` (invio al ritorno della rete), `send` (RPC `save_workout`).
+- Le nuove sessioni hanno l'id generato sul client (`clientId` della bozza): `save_workout` fa update-or-insert, quindi i tentativi ripetuti sono idempotenti.
+- `public/sw.js`: cache-first per `/_next/static`, network-first (4 s) con copia per le pagine, stale-while-revalidate per icone; Supabase e `/api` esclusi. Registrato solo in produzione (`NetworkStatus`), cache delle pagine svuotata al logout e a sessione scaduta.
+- Profilo: `Onboarding` chiede sesso/nascita/altezza se mancanti; `bodyGeometry("female")` deforma la figura base; `proportions(sites, sex)` usa riferimenti specifici.

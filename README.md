@@ -110,6 +110,65 @@ Nessuna migrazione. **AI Bridge → Dieta**: prompt → risposta dell'IA → ant
 
 ---
 
+## Aggiornamento 3 — Allenamento
+1. SQL Editor → esegui `supabase/migrations/20261012000001_training.sql` (schede, giorni, esercizi, sessioni, serie; include già la protezione MFA).
+2. **AI Bridge → Allenamento**: copia il prompt, dai all'IA la scheda (e il diario degli ultimi mesi), incolla la risposta.
+3. **Allenamento** (`/training`):
+   - seduta di oggi (giorno fisso o rotazione), registro con serie × carico, RPE, timer di recupero con suono, bozza salvata sul dispositivo, record personali;
+   - volume settimanale per muscolo (scheda vs sessioni reali), equilibrio spinte/tirate, femorali/quadricipiti, gambe/busto, frequenza;
+   - progressione per esercizio (massimale stimato Epley, tendenza %/mese, esercizi fermi);
+   - collegamento con le misure: proporzioni (spalle/vita, torace/vita, braccio/collo, polpaccio/braccio…), asimmetrie sx/dx, crescita delle circonferenze → punti forti e distretti da potenziare con gli esercizi su cui concentrarsi.
+4. Integrazioni: consigli "Allenamento" (anche incrociati con proteine, deficit, cardio, pressione, livello di attività del profilo), agenda della dashboard, integratori "solo nei giorni di allenamento", report stampabile, backup e ripristino.
+5. Nelle visite, in "Altri siti", ora puoi inserire braccio, avambraccio, coscia e polpaccio sinistro/destro.
+
+---
+
+## Aggiornamento 4 — Allenamento v2, mappa corporea, prestazioni
+1. SQL Editor → esegui `supabase/migrations/20261013000001_training_v2.sql`.
+   Converte le sessioni già salvate nel nuovo formato compatto (nessun dato perso) e aggiunge tecniche ed editor delle schede.
+   **Esegui la migrazione e pubblica il nuovo codice insieme**: la versione precedente dell'app non legge il nuovo formato.
+2. **Allenamento** (`/training`), ora organizzato in schede:
+   - *Allenati*: seduta di oggi, durata stimata, avvio del registro;
+   - *Schede*: editor completo (giorni, esercizi, serie, ripetizioni, recupero, RIR, carico, superserie, tecniche) e modelli pronti (Full body, Upper/Lower, PPL);
+   - *Esercizi*: libreria con figura dei muscoli coinvolti, indicazioni tecniche, record, grafico dei progressi;
+   - *Storico*: calendario degli ultimi 6 mesi e sessioni (dettagli caricati solo su richiesta);
+   - *Analisi*: punti deboli, volume per muscolo, proporzioni, progressione.
+   - Registro a schermo intero: carico suggerito (doppia progressione), serie generate in base alla tecnica (piramide, piramide inversa, drop set, rest-pause, myo-reps, cluster, AMRAP, EMOM), riscaldamento automatico, dischi per lato, timer di recupero con suono e vibrazione, superserie, schermo sempre acceso durante l'allenamento, riepilogo finale con record e confronto con l'ultima volta.
+3. **Archiviazione compatta**: ogni sessione è una riga con le serie in JSON compatto + un riepilogo calcolato dal database. Un anno a 3 allenamenti/settimana ≈ 150 KB; l'app scarica solo i riepiloghi (pochi KB) e le serie complete delle ultime 8 settimane.
+4. **Mappa corporea** (`/body` e in dashboard): corpo olografico fronte/retro con circonferenze e variazioni, muscoli colorati per volume di allenamento o punti deboli, cuore e analisi, composizione e salute a lato.
+5. **Prestazioni e batteria**: sfondo senza filtri di sfocatura, vetro delle card disattivato su telefono/tablet, animazioni solo `transform/opacity` e ferme fuori schermo, liste lunghe con `content-visibility`.
+
+## Aggiornamento 5 — Allenamento ovunque, offline, più account
+1. SQL Editor → esegui `supabase/migrations/20261014000001_offline_sync.sql` (salvataggio idempotente delle sessioni concluse offline). L'app funziona anche prima della migrazione, ma senza protezione dai doppioni.
+2. **Avvio rapido**: card "Allenamento rapido" in dashboard (oggi / altro giorno della scheda / ripeti l'ultima / sessione libera), ricerca rapida (Ctrl+K) e scorciatoia dell'icona dell'app (tieni premuto). Il registro vive nella shell: resta aperto cambiando pagina e una pillola "allenamento in corso" permette di riprenderlo da qualsiasi schermata.
+3. **Offline e salvataggi**: la bozza (serie, carichi, posizione, timer di recupero) è salvata sul dispositivo a ogni tocco e sopravvive a chiusure accidentali e riavvii. Senza rete la sessione conclusa va in coda e parte da sola al ritorno della connessione (id generato sul telefono → nessun doppione). Service worker (solo in produzione): file dell'app in cache, pagine principali disponibili offline; i dati restano nella cache locale dell'app (7 giorni, cancellata all'uscita). La disconnessione automatica si sospende durante l'allenamento e offline.
+4. **Più account** (es. un secondo utente): ogni account vede solo i propri dati (RLS). Per crearne uno: *Authentication → Users → Add user → Create new user* (email + password provvisoria, *Auto confirm*); le iscrizioni pubbliche restano disattivate. Al primo accesso l'app chiede sesso, data di nascita e altezza; la password si cambia in *Impostazioni → Sicurezza*. Profilo donna: figura femminile nella mappa corporea, proporzioni di riferimento "a clessidra" (fianchi/vita, spalle/fianchi), valori di riferimento femminili già usati da BIA, analisi e integratori. Bozze e code offline sono separate per account anche sullo stesso telefono.
+5. **Pagina Allenamento** più leggibile: schede a griglia su telefono, card "Questa settimana" (giorni fatti/previsti, numeri chiave, ultime 12 settimane), ultime sessioni con *ripeti* e *modifica*, consigli principali; tecniche in un pannello richiudibile; calcolatori (massimale stimato con tabella %, dischi per lato) nella sezione Esercizi; nuovo modello "Lower focus 3 giorni".
+
+> Dopo aggiornamenti importanti, se `npm run dev` mostra errori su file che non esistono più (es. `lastSetsFor is not a function`), ferma il server, elimina la cartella `.next` e riavvia: è la cache del compilatore.
+
+## Aggiornamento 6 — Controllo generale
+1. SQL Editor → esegui di nuovo `supabase/migrations/20261014000001_offline_sync.sql` (aggiornata: una modifica a una sessione eliminata da un altro dispositivo non la ricrea più).
+2. **Registro**: colonna *Precedente* per ogni serie (carico × ripetizioni della volta scorsa, riscaldamento con riscaldamento, drop con drop); un tocco la copia nella riga, *Usa questi* la copia in tutte. Riquadro *Ultima volta* con data e record; serie corrente evidenziata; colonna RPE facoltativa; spuntando una serie vuota si usano i valori precedenti. Nella seduta di oggi ogni esercizio mostra l'ultima serie migliore.
+3. **Affidabilità**: con serie spuntate si salvano solo quelle; valori fuori scala limitati prima dell'invio; sessioni rifiutate dal server segnalate con *Riprova / Scarta*; modifiche alle sessioni salvate protette anche loro da chiusure accidentali; registro non chiudibile durante il salvataggio; sessioni delle ultime 8 settimane modificabili/ripetibili anche offline; codice del registro e delle pagine principali messo in cache in anticipo; stato offline corretto anche se l'app viene aperta già senza rete.
+
+## Aggiornamento 7 — Revisione completa
+1. SQL Editor → esegui `supabase/migrations/20261015000001_fixes.sql` (date degli integratori non ancora iniziati).
+2. **Più account e sicurezza**: nessun dato di un account resta in memoria o nella copia locale quando entra un altro utente (anche dopo una sessione scaduta o un logout da un'altra scheda); "Esci" e la disconnessione automatica chiudono solo questo dispositivo (per tutti: *Esci da tutti i dispositivi*); attività condivisa tra le schede per la disconnessione automatica; consigli nascosti, domande per il nutrizionista e obiettivi festeggiati separati per account; redirect dopo il login limitato a pagine interne.
+3. **Precisione**: obiettivo superato nella direzione voluta = raggiunto; visite con solo peso non interrompono i delta BIA né i controlli di plausibilità, nessun falso "cambio strumento"; nuova visita con l'ultimo strumento BIA usato; volume di allenamento diviso per le settimane effettive per chi ha iniziato da poco; alternative "oppure" della dieta contate come una porzione; melanzane, fagiolini, rana pescatrice, polpette, macinato di pollo/tacchino e granola classificati correttamente; integratori settimanali in checklist solo finché non hai fatto le dosi della settimana; costanza degli integratori contata solo da quando esistono; totali e limiti di sicurezza solo per gli integratori in corso; riferimenti delle analisi aggiornati subito al cambio di sesso/età; per le donne la crescita dei fianchi (con vita stabile) è un punto forte.
+4. **Backup**: il ripristino ricrea i siti di misura personalizzati e la checklist dei pasti; data dell'ultimo backup in ora locale.
+5. **Nuove funzioni**: *Esporta CSV* nello storico allenamenti (tutte le serie, apribile con Excel/Fogli); consiglio di **settimana di scarico** dopo 6+ settimane piene con progressi fermi o sessioni molto dure.
+6. **Varie**: obiettivi modificabili anche con una data già passata; salvare una card del profilo non cancella le modifiche nell'altra; checklist pasti limitata ai giorni caricati; una scheda eliminata non resta selezionata; nel registro ogni esercizio mostra le serie fatte (es. 2/4).
+
+## Aggiornamento 8 — Coach AI
+1. **Coach AI** (menu *Strumenti* → *Coach AI*, oppure "Crea con Coach AI" in Allenamento e Nutrizione): scegli se ricevere scheda, dieta o entrambe, imposti le preferenze (giorni e minuti di allenamento, attrezzatura, esercizi o dolori da evitare, calorie e proteine suggerite dall'app, alimenti esclusi, numero di pasti e alternative) e quali dati includere. L'app prepara un unico prompt con il tuo fascicolo (profilo, composizione, circonferenze, analisi, referti, integratori, scheda e dieta attuali): lo copi o lo scarichi come .txt, lo incolli in Gemini/ChatGPT/Claude e incolli qui la risposta. Scheda e dieta vengono riconosciute anche nella stessa risposta, mostrate in anteprima e importate con un tocco; puoi scegliere se renderle attive. Preferenze salvate per ogni account.
+2. **Registro**: la colonna *Precedente* considera anche una sessione fatta lo stesso giorno (doppio allenamento); "annulla" più affidabile.
+3. **Import**: anteprima della dieta con le alternative scritte come "A oppure B"; messaggio finale corretto quando la scheda importata non viene attivata.
+4. **Emoji** per riconoscere a colpo d'occhio alimenti (🍝 🍗 🥦 🍎…), pasti (☕ colazione, 🍝 pranzo…), esercizi per muscolo (🦵 💪 🦅 🍑 🏃…), integratori e le voci di "Oggi" in dashboard.
+5. Scheda, dieta o sessione eliminate non generano più errori di caricamento nelle altre schermate.
+
+---
+
 ## Convenzioni
 - Migrazioni: mai modificare un file già applicato → crea `supabase/migrations/<timestamp>_descrizione.sql`.
 - Dopo ogni migrazione: `npm run db:types`.
