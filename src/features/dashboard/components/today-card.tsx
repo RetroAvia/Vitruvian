@@ -1,10 +1,11 @@
 "use client"
 
-import { ArrowRight, CalendarCheck, FlaskConical, HeartPulse, Lightbulb, Pill, Salad, ScanLine } from "lucide-react"
+import { ArrowRight, CalendarCheck, Dumbbell, FlaskConical, HeartPulse, Lightbulb, Pill, Salad, ScanLine } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useMemo } from "react"
 import { toast } from "sonner"
 
+import { useSessionUser } from "@/components/layout/session-user-context"
 import { GlassCard } from "@/components/shared/glass-card"
 import { ScoreRing } from "@/components/shared/score-ring"
 import { Button } from "@/components/ui/button"
@@ -38,6 +39,7 @@ const TONE: Record<AgendaItem["tone"], string> = {
 
 /** Sezione "Il tuo quadro": indice salute, consigli principali e agenda di oggi. */
 export function TodayCard() {
+  const user = useSessionUser()
   const { advice, score, input, isPending } = useHealthContext()
   const visible = useVisibleAdvice(advice)
   const today = todayISO()
@@ -52,14 +54,27 @@ export function TodayCard() {
     if (!input) return []
     const items: AgendaItem[] = []
 
-    const scheduled = input.supplements.filter((s) => isScheduled(s, today))
+    const tr = input.training
+    const trainingDay = tr?.tree?.days.every((d) => d.day_of_week) ? !tr.today.rest || Boolean(tr.today.doneToday) : null
+    if (tr?.hasData) {
+      const t = tr.today
+      if (t.doneToday) {
+        items.push({ id: "training", icon: Dumbbell, title: `✅ Allenamento fatto: ${t.doneToday.title}`, detail: `${t.doneToday.total_sets} serie registrate`, href: "/training", tone: "gain", progress: 1 })
+      } else if (t.day) {
+        items.push({ id: "training", icon: Dumbbell, title: `🏋️ Allenamento: ${t.day.label}`, detail: t.day.focus ?? `${t.day.exercises.length} esercizi`, href: "/training?log=1", tone: "neon" })
+      } else if (t.rest) {
+        items.push({ id: "training", icon: Dumbbell, title: "😴 Riposo dagli allenamenti", detail: "Recupero attivo: una camminata va benissimo", href: "/training", tone: "muted" })
+      }
+    }
+
+    const scheduled = input.supplements.filter((s) => isScheduled(s, today, trainingDay, supLogsQ.data ?? []))
     if (scheduled.length > 0) {
       const taken = new Set((supLogsQ.data ?? []).filter((l) => l.log_date === today && l.taken).map((l) => l.supplement_id))
       const done = scheduled.filter((s) => taken.has(s.id)).length
       items.push({
         id: "sup",
         icon: Pill,
-        title: done === scheduled.length ? "Integratori di oggi completati" : `Integratori: ${scheduled.length - done} da prendere`,
+        title: done === scheduled.length ? "💊 Integratori di oggi completati" : `💊 Integratori: ${scheduled.length - done} da prendere`,
         detail: scheduled.filter((s) => !taken.has(s.id)).map((s) => s.name).slice(0, 3).join(", ") || "Ottimo lavoro",
         href: "/supplements",
         tone: done === scheduled.length ? "gain" : "neon",
@@ -74,7 +89,7 @@ export function TodayCard() {
       items.push({
         id: "meals",
         icon: Salad,
-        title: done === day.meals.length ? "Pasti di oggi registrati" : `Pasti: ${done}/${day.meals.length} registrati`,
+        title: done === day.meals.length ? "🍽️ Pasti di oggi registrati" : `🍽️ Pasti: ${done}/${day.meals.length} registrati`,
         detail: day.label ?? input.planName ?? "Piano attivo",
         href: "/nutrition",
         tone: done === day.meals.length ? "gain" : "neon",
@@ -87,7 +102,7 @@ export function TodayCard() {
       items.push({
         id: `due-${u.kind}`,
         icon: HeartPulse,
-        title: u.status === "overdue" ? `${u.label}: scaduto` : `${u.label} tra ${u.daysLeft} giorni`,
+        title: u.status === "overdue" ? `🩺 ${u.label}: scaduto` : `🩺 ${u.label} tra ${u.daysLeft} giorni`,
         detail: `Scadenza ${formatDate(u.dueDate, "medium")}`,
         href: "/reports",
         tone: u.status === "overdue" ? "warn" : "neon",
@@ -101,7 +116,7 @@ export function TodayCard() {
       items.push({
         id: "bia",
         icon: ScanLine,
-        title: left <= 0 ? "Prossima misurazione BIA: è il momento" : `Prossima misurazione BIA tra ${left} giorni`,
+        title: left <= 0 ? "⚖️ Prossima misurazione BIA: è il momento" : `⚖️ Prossima misurazione BIA tra ${left} giorni`,
         detail: `Ultima il ${formatDate(last, "medium")} · ogni 4–6 settimane`,
         href: "/checkups?new=1",
         tone: left <= 0 ? "warn" : "muted",
@@ -115,7 +130,7 @@ export function TodayCard() {
         items.push({
           id: "labs",
           icon: FlaskConical,
-          title: left <= 0 ? "Analisi del sangue da rifare" : `Analisi del sangue tra ${left} giorni`,
+          title: left <= 0 ? "🩸 Analisi del sangue da rifare" : `🩸 Analisi del sangue tra ${left} giorni`,
           detail: `Ultime il ${formatDate(input.labs.latestDate, "medium")}`,
           href: "/labs",
           tone: left <= 0 ? "warn" : "neon",
@@ -130,7 +145,13 @@ export function TodayCard() {
     const reached = (input?.forecasts ?? []).filter((f) => f.direction === "reached")
     if (reached.length === 0) return
     try {
-      const key = "vitruvian-celebrated"
+      const key = `vitruvian-celebrated:${user.id}`
+      // versione precedente senza utente: le vittorie già festeggiate restano tali
+      const legacy = localStorage.getItem("vitruvian-celebrated")
+      if (legacy !== null) {
+        if (localStorage.getItem(key) === null) localStorage.setItem(key, legacy)
+        localStorage.removeItem("vitruvian-celebrated")
+      }
       const done = new Set<string>(JSON.parse(localStorage.getItem(key) ?? "[]") as string[])
       const fresh = reached.filter((f) => !done.has(`${f.key}:${f.target}`))
       if (fresh.length === 0) return
@@ -141,7 +162,7 @@ export function TodayCard() {
     } catch {
       /* storage non disponibile */
     }
-  }, [input])
+  }, [input, user.id])
 
   if (isPending || !input) {
     return (

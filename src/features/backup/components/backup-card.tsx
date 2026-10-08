@@ -10,7 +10,7 @@ import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { GlassCard } from "@/components/shared/glass-card"
 import { Button } from "@/components/ui/button"
 import { useProfile, useUpdateProfile } from "@/features/profile/api/profile"
-import { daysBetween, formatDate, todayISO } from "@/lib/format"
+import { daysBetween, formatDate, localDateISO, todayISO } from "@/lib/format"
 import { useSound } from "@/lib/sound"
 import { createClient } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
@@ -25,6 +25,8 @@ const LABELS: Record<string, string> = {
   diet_plans: "piani alimentari",
   supplement_logs: "giorni di checklist integratori",
   meal_logs: "giorni di checklist pasti",
+  training_plans: "schede di allenamento",
+  workouts: "sessioni di allenamento",
 }
 
 export function BackupCard() {
@@ -40,7 +42,7 @@ export function BackupCard() {
   const [restoring, setRestoring] = useState<string | null>(null)
 
   const last = profileQ.data?.last_backup_at ?? null
-  const lastDays = last ? daysBetween(last.slice(0, 10), todayISO()) : null
+  const lastDays = last ? daysBetween(localDateISO(last), todayISO()) : null
 
   async function onExport() {
     setExporting(0)
@@ -77,7 +79,7 @@ export function BackupCard() {
       await qc.invalidateQueries()
       play("success")
       toast.success("Ripristino completato", {
-        description: `${r.checkups} visite, ${r.labs} analisi, ${r.medical} referti, ${r.supplements} integratori, ${r.diets} diete${r.skippedDiets.length ? ` (${r.skippedDiets.length} già presenti)` : ""}.`,
+        description: `${r.checkups} visite, ${r.labs} analisi, ${r.medical} referti, ${r.supplements} integratori, ${r.diets} diete, ${r.trainingPlans} schede, ${r.workouts} allenamenti${r.skippedDiets.length ? ` (${r.skippedDiets.length} già presenti)` : ""}.`,
       })
       setPending(null)
     } catch (e) {
@@ -122,7 +124,7 @@ export function BackupCard() {
         )}
       >
         {last
-          ? `Ultimo backup: ${formatDate(last.slice(0, 10), "long")}${lastDays && lastDays > 30 ? ` (${lastDays} giorni fa: è ora di farne uno nuovo)` : ""}`
+          ? `Ultimo backup: ${formatDate(localDateISO(last), "long")}${lastDays && lastDays > 30 ? ` (${lastDays} giorni fa: è ora di farne uno nuovo)` : ""}`
           : "Non hai ancora scaricato un backup. Consigliato una volta al mese."}
       </div>
 

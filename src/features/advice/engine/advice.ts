@@ -18,16 +18,19 @@ import type { MedicalAnalysis } from "@/features/medical/engine/analysis"
 import type { EnergyBalance } from "@/features/nutrition/engine/balance"
 import type { FoodProfile } from "@/features/nutrition/engine/foods"
 import type { NutrientTotal } from "@/features/supplements/engine/analysis"
+import { ACTIVITY_LEVELS } from "@/config/constants"
+import type { TrainingReport } from "@/features/training/engine/report"
 import { resolveNutrient } from "@/features/supplements/engine/nutrients"
 import { daysBetween, formatDate, formatNumber, formatSigned, isNum } from "@/lib/format"
 import type { Profile, Supplement } from "@/types/domain"
 
-export type AdviceCategory = "goals" | "body" | "nutrition" | "labs" | "supplements" | "heart" | "checkups"
+export type AdviceCategory = "goals" | "body" | "training" | "nutrition" | "labs" | "supplements" | "heart" | "checkups"
 export type AdvicePriority = "high" | "medium" | "low"
 
 export const ADVICE_CATEGORY_LABELS: Record<AdviceCategory, string> = {
   goals: "Obiettivi",
   body: "Composizione",
+  training: "Allenamento",
   nutrition: "Alimentazione",
   labs: "Analisi",
   supplements: "Integratori",
@@ -63,6 +66,8 @@ export interface AdviceInput {
   supplements: Supplement[]
   supTotals: NutrientTotal[]
   medical: MedicalAnalysis | null
+  /** report del motore allenamento (assente se la sezione non è usata) */
+  training?: TrainingReport | null
 }
 
 const PRIORITY_ORDER: Record<AdvicePriority, number> = { high: 0, medium: 1, low: 2 }
@@ -90,6 +95,10 @@ const n0 = (v: number | null | undefined) => formatNumber(v, 0)
 const n1 = (v: number | null | undefined) => formatNumber(v, 1)
 
 /* --------------------------------- Motore ---------------------------------- */
+
+function wantsMuscleGoal(profile: Profile | null, forecasts: GoalForecast[]) {
+  return isNum(profile?.target_ffm_kg) || forecasts.some((f) => f.key === "ffm")
+}
 
 export function buildAdvice(input: AdviceInput): Advice[] {
   const { today, profile, bio, forecasts, labs, balance, food, supplements, supTotals, medical } = input
@@ -394,7 +403,7 @@ export function buildAdvice(input: AdviceInput): Advice[] {
     add({ id: "caffeine", category: "supplements", priority: "low", title: `${n0(caffeine.perDay)} mg di caffeina dagli integratori`, why: "Il limite di 400 mg al giorno include caffè, tè ed energy drink.", action: `Con questa dose restano circa ${Math.max(0, Math.floor((400 - caffeine.perDay) / 70))} caffè al giorno; nessuna caffeina nelle 6 ore prima di dormire.` })
   }
   const wantsMuscle = forecasts.some((f) => f.key === "ffm") || (recomp && ["lean_gain", "lean_bulk", "recomp"].includes(recomp.type)) || isNum(profile?.target_ffm_kg)
-  if (wantsMuscle && creatineSup.length === 0 && active.length > 0) {
+  if (wantsMuscle && creatineSup.length === 0 && (active.length > 0 || (input.training?.logged.sessionsPerWeek ?? 0) >= 2)) {
     add({ id: "creatine-suggest", category: "supplements", priority: "low", title: "Creatina: l'integratore con più evidenze per la massa magra", why: "Hai un obiettivo di massa magra e non risulta tra i tuoi integratori.", action: "Creatina monoidrato 3–5 g al giorno, tutti i giorni, in qualsiasi momento. Valutala con il nutrizionista; ricorda che alza la creatinina nelle analisi." })
   }
   if (active.length > 0 && active.every((s) => s.ingredients.length === 0)) {
@@ -433,6 +442,77 @@ export function buildAdvice(input: AdviceInput): Advice[] {
         add({ id: "bp-trend", category: "heart", priority: "medium", title: `Pressione sistolica in aumento (${formatSigned(last.value - first.value, 0)} mmHg)`, why: `Dal ${formatDate(first.date, "medium")} al ${formatDate(last.date, "medium")}.`, action: "Controlla sale, alcol, peso e stimolanti; misurala a casa regolarmente." })
       }
     }
+  }
+
+  /* =============================== ALLENAMENTO =============================== */
+  const tr = input.training
+  if (tr?.hasData) {
+    const ffmTrend = forecasts.find((f) => f.key === "ffm")
+    for (const w of tr.physique.weaknesses.slice(0, 3)) {
+      const add1 = w.exercises.find((e) => !e.inPlan)
+      const inPlan = w.exercises.filter((e) => e.inPlan)
+      add({
+        id: `tr-weak-${w.muscle}`,
+        category: "training",
+        priority: w.score >= 3 ? "medium" : "low",
+        title: `${w.label}: punto da potenziare`,
+        why: w.reasons.join("; ") + ".",
+        action: `Porta i ${w.label.toLowerCase()} a circa ${w.targetSets} serie a settimana su 2 sedute${inPlan.length ? `: aumenta le serie di ${inPlan.map((e) => e.name).join(", ")}` : ""}${add1 ? `${inPlan.length ? " e aggiungi" : ": aggiungi"} ${add1.name}` : ""}.`,
+        link: { href: "/training", label: "Allenamento" },
+      })
+    }
+    for (const b of tr.physique.balance.filter((x) => x.tone === "warn").slice(0, 3)) {
+      add({ id: `tr-bal-${b.key}`, category: "training", priority: b.key === "push-pull" || b.key === "hinge" ? "medium" : "low", title: b.title, why: "Dalla distribuzione delle serie nella scheda / nelle sessioni.", action: b.detail, link: { href: "/training", label: "Allenamento" } })
+    }
+    for (const a of tr.physique.asymmetries.filter((x) => x.relevant)) {
+      add({ id: `tr-asym-${a.site}`, category: "training", priority: "low", title: `${a.label}: lato ${a.weaker} più piccolo di ${formatNumber(a.diff, 1)} cm`, why: `Sinistro ${formatNumber(a.left, 1)} cm, destro ${formatNumber(a.right, 1)} cm.`, action: "Usa manubri ed esercizi monolaterali, inizia dal lato debole e fermati alle sue ripetizioni." })
+    }
+    if (tr.adherence !== null && tr.adherence < 70 && tr.logged.sessions > 0) {
+      add({ id: "tr-adherence", category: "training", priority: "medium", title: `Allenamenti svolti al ${tr.adherence}%`, why: `${formatNumber(tr.logged.sessionsPerWeek, 1)} sessioni a settimana contro ${tr.plan?.sessionsPerWeek ?? "?"} previste nelle ultime 4 settimane.`, action: "Se la scheda è troppo impegnativa per la tua settimana, meglio una versione da un giorno in meno che saltare sedute: la costanza vale più del volume." })
+    }
+    const stalled = tr.progress.filter((p) => p.status === "stall" && p.sessions >= 4)
+    const regress = tr.progress.filter((p) => p.status === "regress" && p.sessions >= 4)
+    if (regress.length >= 2 || (stalled.length >= 3 && isNum(tr.logged.avgRpe) && tr.logged.avgRpe >= 8.5)) {
+      add({
+        id: "tr-deload",
+        category: "training",
+        priority: "medium",
+        title: regress.length >= 2 ? "Carichi in calo: segnali di affaticamento" : "Più esercizi fermi con sessioni molto dure",
+        why: `${[...regress, ...stalled].slice(0, 4).map((p) => p.name).join(", ")}${balance?.status === "deficit_aggressive" ? `; il piano alimentare è in deficit marcato (${formatSigned(balance.pct, 0)}%)` : ""}.`,
+        action: `Fai una settimana di scarico (metà delle serie, stessi carichi), dormi 7–9 ore${balance && (balance.status === "deficit" || balance.status === "deficit_aggressive") ? " e valuta con il nutrizionista di ridurre il deficit" : ""}, poi riprendi con +2,5% sui carichi.`,
+      })
+    } else if (stalled.length > 0) {
+      add({ id: "tr-stall", category: "training", priority: "low", title: `${stalled.length === 1 ? stalled[0]?.name : `${stalled.length} esercizi`} senza progressi da oltre 5 settimane`, why: stalled.map((p) => `${p.name} (record ${formatNumber(p.best.value, 1)} ${p.kind === "load" ? "kg stimati" : "rip."})`).join(", ") + ".", action: "Doppia progressione: resta sul carico finché non chiudi tutte le serie al massimo delle ripetizioni, poi aumenta del 2,5–5%. In alternativa cambia variante dell'esercizio." })
+    }
+    if (tr.prs.length > 0) {
+      add({ id: "tr-prs", category: "training", priority: "low", positive: true, title: `${tr.prs.length} ${tr.prs.length === 1 ? "record" : "record personali"} nell'ultimo mese`, why: tr.prs.slice(0, 4).map((p) => p.name).join(", ") + ".", action: "La programmazione funziona: mantieni la progressione graduale dei carichi." })
+    }
+    // Allenamento ↔ composizione corporea ↔ dieta
+    const weeklySets = tr.plan ? tr.plan.totalSets : Object.values(tr.logged.perMuscle).reduce((a, b) => a + b, 0)
+    if (ffmTrend && ffmTrend.perMonth < 0.1 && weeklySets >= 60 && food && isNum(food.avgProtein) && isNum(weight) && (food.avgProtein + supProtein) / weight < 1.6) {
+      add({ id: "tr-ffm-protein", category: "training", priority: "medium", title: "Ti alleni tanto ma la massa magra non sale", why: `Circa ${n0(weeklySets)} serie a settimana, massa magra ${formatSigned(ffmTrend.perMonth, 1)} kg/mese e proteine sotto 1,6 g/kg.`, action: "Il volume c'è: il collo di bottiglia è il recupero. Porta le proteine a 1,8–2,0 g/kg e verifica di non essere in deficit." })
+    } else if (ffmTrend && ffmTrend.perMonth < 0.1 && weeklySets > 0 && weeklySets < 40 && (wantsMuscleGoal(profile, forecasts))) {
+      add({ id: "tr-ffm-volume", category: "training", priority: "medium", title: "Volume basso per far crescere la massa magra", why: `Circa ${n0(weeklySets)} serie a settimana in totale e massa magra stabile (${formatSigned(ffmTrend.perMonth, 1)} kg/mese).`, action: "Aumenta gradualmente fino a 10–15 serie settimanali per i gruppi principali, aggiungendo 1–2 serie a settimana." })
+    }
+    const cardio = Math.max(tr.logged.cardioMinPerWeek, tr.plan?.cardioMin ?? 0)
+    const fatUp = recomp && ["fat_gain", "dirty_bulk", "worsening"].includes(recomp.type)
+    const bpHigh = medical?.insights.some((i) => i.id === "bp" && i.kind !== "strength")
+    if (cardio < 90 && (fatUp || bpHigh || (ldl && ldl.latest.flag === "high"))) {
+      add({ id: "tr-cardio", category: "training", priority: "medium", title: `Cardio: ${n0(cardio)} minuti a settimana`, why: [fatUp ? "aumento di grasso nell'ultimo periodo" : null, bpHigh ? "pressione sopra l'ottimale" : null, ldl?.latest.flag === "high" ? "LDL alto" : null].filter(Boolean).join(", ") + ".", action: "Aggiungi 150 minuti a settimana di attività moderata (camminata veloce, bici) o 2 sedute da 25 minuti dopo i pesi: non compromette la crescita muscolare." })
+    }
+    // livello di attività del profilo coerente con gli allenamenti reali → TDEE corretto
+    if (profile && tr.logged.sessions >= 4) {
+      const spw = tr.logged.sessionsPerWeek
+      const real = spw < 0.75 ? "sedentary" : spw < 2.75 ? "light" : spw < 5.25 ? "moderate" : "active"
+      const order = ["sedentary", "light", "moderate", "active", "very_active"]
+      const diff = order.indexOf(real) - order.indexOf(profile.activity_level)
+      // sottostimato di un livello, o sovrastimato di due (il profilo include anche il lavoro)
+      if (diff >= 1 || diff <= -2) {
+        add({ id: "tr-activity", category: "training", priority: "low", title: `Livello di attività da aggiornare: “${ACTIVITY_LEVELS[real as keyof typeof ACTIVITY_LEVELS].label}”`, why: `Nelle ultime 4 settimane ${formatNumber(spw, 1)} allenamenti a settimana, mentre nel profilo è indicato “${ACTIVITY_LEVELS[profile.activity_level].label}”.`, action: "Aggiornalo in Impostazioni: il fabbisogno calorico stimato (TDEE) e quindi il bilancio della dieta diventano più precisi.", link: { href: "/settings", label: "Profilo" } })
+      }
+    }
+  } else if (bio?.latest) {
+    add({ id: "tr-none", category: "training", priority: "low", title: "Allenamento non ancora collegato", why: "Senza scheda e sessioni non è possibile capire quali distretti sono indietro.", action: "Importa la scheda e il diario con l'AI Bridge: l'app incrocia volume per muscolo e circonferenze.", link: { href: "/bridge?tab=training", label: "Importa scheda" } })
   }
 
   /* ================================ CONTROLLI ================================ */
@@ -493,6 +573,13 @@ export function healthScore(input: AdviceInput): HealthScore {
     const rs = [...medical.latestByKind.values()]
     const s = rs.reduce((a, r) => a + (r.outcome === "normal" ? 100 : r.outcome === "borderline" ? 60 : r.outcome === "abnormal" ? 20 : 75), 0) / rs.length
     parts.push({ key: "heart", label: "Referti", score: Math.round(s), weight: 2, detail: `${rs.filter((r) => r.outcome === "normal").length}/${rs.length} referti nella norma` })
+  }
+  const tr = input.training
+  if (tr?.hasData && (tr.adherence !== null || tr.logged.sessions > 0)) {
+    const adh = tr.adherence ?? Math.min(100, Math.round((tr.logged.sessionsPerWeek / 3) * 100))
+    const balancePenalty = tr.physique.balance.filter((b) => b.tone === "warn").length * 6
+    const s = Math.max(0, Math.min(100, Math.round(adh * 0.7 + 30 - balancePenalty)))
+    parts.push({ key: "training", label: "Allenamento", score: s, weight: 2, detail: `${formatNumber(tr.logged.sessionsPerWeek, 1)} sessioni/settimana${tr.adherence !== null ? `, costanza ${tr.adherence}%` : ""}` })
   }
   if (input.quality) {
     parts.push({ key: "consistency", label: "Costanza", score: input.quality.score, weight: 1, detail: `Affidabilità dati ${input.quality.label.toLowerCase()}` })

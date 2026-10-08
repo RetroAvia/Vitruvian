@@ -16,6 +16,7 @@ import { useMemo, useState } from "react"
 import { toast } from "sonner"
 
 import { EmptyState } from "@/components/shared/empty-state"
+import { useSessionUser } from "@/components/layout/session-user-context"
 import { GlassCard } from "@/components/shared/glass-card"
 import { PageHeader } from "@/components/shared/page-header"
 import { ScoreRing } from "@/components/shared/score-ring"
@@ -39,13 +40,14 @@ export const PRIORITY_STYLE = {
 
 export function useVisibleAdvice(advice: Advice[] | undefined) {
   const dismissed = useUiStore((s) => s.dismissedAdvice)
+  const user = useSessionUser()
   return useMemo(() => {
     const today = todayISO()
     return (advice ?? []).filter((a) => {
-      const d = dismissed[a.id]
+      const d = dismissed[`${user.id}:${a.id}`]
       return !d || daysBetween(d, today) > 30
     })
-  }, [advice, dismissed])
+  }, [advice, dismissed, user.id])
 }
 
 export function AdviceView() {
@@ -53,6 +55,7 @@ export function AdviceView() {
   const visible = useVisibleAdvice(advice)
   const dismissedCount = (advice?.length ?? 0) - visible.length
   const restore = useUiStore((s) => s.restoreAdvice)
+  const user = useSessionUser()
   const [cat, setCat] = useState<AdviceCategory | "all">("all")
   const [showPositive, setShowPositive] = useState(true)
 
@@ -210,7 +213,7 @@ export function AdviceView() {
         )}
         {dismissedCount > 0 && (
           <div className="mt-4 text-center">
-            <Button variant="ghost" size="sm" className="rounded-xl text-muted-foreground" onClick={restore}>
+            <Button variant="ghost" size="sm" className="rounded-xl text-muted-foreground" onClick={() => restore(user.id)}>
               <RotateCcw className="size-3.5" />
               Mostra i {dismissedCount} consigli segnati come fatti
             </Button>
@@ -289,6 +292,7 @@ function ForecastTile({ f }: { f: GoalForecast }) {
 export function AdviceCard({ a, compact }: { a: Advice; compact?: boolean }) {
   const p = PRIORITY_STYLE[a.priority]
   const dismiss = useUiStore((s) => s.dismissAdvice)
+  const user = useSessionUser()
   const play = useSound()
 
   return (
@@ -328,7 +332,7 @@ export function AdviceCard({ a, compact }: { a: Advice; compact?: boolean }) {
               size="sm"
               className="rounded-lg text-muted-foreground"
               onClick={() => {
-                dismiss(a.id, todayISO())
+                dismiss(`${user.id}:${a.id}`, todayISO())
                 play("check")
                 toast.success("Segnato come fatto", { description: "Lo rivedrai tra 30 giorni se il dato non cambia." })
               }}

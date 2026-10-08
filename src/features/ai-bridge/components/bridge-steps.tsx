@@ -17,7 +17,8 @@ export function StepCard({
   children,
   className,
 }: {
-  n: number
+  /** numero del passo; omesso quando la scheda è dentro un'altra procedura (Coach AI) */
+  n?: number
   title: string
   description?: string
   done?: boolean
@@ -34,11 +35,11 @@ export function StepCard({
           )}
           aria-hidden
         >
-          {done ? <Check className="size-3.5" /> : n}
+          {done ? <Check className="size-3.5" /> : (n ?? "›")}
         </span>
         <div>
           <h2 className="text-sm font-semibold">
-            <span className="sr-only">Passo {n}: </span>
+            {n !== undefined && <span className="sr-only">Passo {n}: </span>}
             {title}
           </h2>
           {description && <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>}

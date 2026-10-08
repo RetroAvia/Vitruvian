@@ -33,15 +33,20 @@ interface CheckupsTableProps {
 export function CheckupsTable({ rows, allChronological, columns, showDeltas, onEdit, onDelete }: CheckupsTableProps) {
   const [sort, setSort] = useState<SortState>({ id: "date", dir: "desc" })
 
-  // Visita precedente (cronologica) per ciascuna visita
-  const prevById = useMemo(() => {
-    const map = new Map<string, Checkup>()
-    allChronological.forEach((c, i) => {
-      const p = allChronological[i - 1]
-      if (p) map.set(c.id, p)
-    })
-    return map
-  }, [allChronological])
+  // Posizione cronologica di ogni visita (per il delta rispetto alla precedente con quel dato)
+  const indexById = useMemo(() => new Map(allChronological.map((c, i) => [c.id, i])), [allChronological])
+  /** Ultimo valore precedente della colonna (per la BIA: stesso strumento); le visite con solo peso non interrompono i delta. */
+  const prevValue = (row: Checkup, col: (typeof columns)[number]): number | null => {
+    const i = indexById.get(row.id) ?? 0
+    for (let j = i - 1; j >= 0; j--) {
+      const c = allChronological[j] as Checkup
+      const v = col.get(c)
+      if (!isNum(v)) continue
+      if (col.bia && c.protocol_id !== row.protocol_id) return null
+      return v
+    }
+    return null
+  }
 
   const sorted = useMemo(() => {
     const col = columns.find((c) => c.id === sort.id)
@@ -110,16 +115,10 @@ export function CheckupsTable({ rows, allChronological, columns, showDeltas, onE
         </thead>
         <tbody>
           {sorted.map((row, i) => {
-            const prev = prevById.get(row.id)
-            const sameProtocol = prev ? prev.protocol_id === row.protocol_id : false
-            // Divisore quando cambia lo strumento BIA (solo in ordine cronologico)
-            const neighbour = sorted[i - 1]
-            const protocolChanged =
-              byDate &&
-              neighbour !== undefined &&
-              neighbour.protocol_id !== row.protocol_id &&
-              (neighbour.protocol_id !== null || row.protocol_id !== null)
-            const newer = sort.dir === "desc" ? neighbour : row
+            // Divisore quando cambia lo strumento BIA (solo in ordine cronologico, ignorando le visite senza BIA)
+            const lastBia = row.protocol_id ? sorted.slice(0, i).reverse().find((x) => x.protocol_id) : undefined
+            const protocolChanged = byDate && lastBia !== undefined && lastBia.protocol_id !== row.protocol_id
+            const newer = sort.dir === "desc" ? lastBia : row
 
             return (
               <Fragment key={row.id}>
@@ -152,7 +151,7 @@ export function CheckupsTable({ rows, allChronological, columns, showDeltas, onE
                   </th>
                   {columns.map((col) => {
                     const v = col.get(row)
-                    const p = prev && (!col.bia || sameProtocol) ? col.get(prev) : null
+                    const p = isNum(v) ? prevValue(row, col) : null
                     const d = isNum(v) && isNum(p) ? v - p : null
                     return (
                       <td key={col.id} className="whitespace-nowrap border-b px-3 py-2.5 text-right align-top">

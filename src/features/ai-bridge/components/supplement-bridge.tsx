@@ -44,9 +44,11 @@ export function SupplementBridge() {
       })
       return { s, match, ingredients }
     })
-    const names = new Set(parsed.data.supplements.map((s) => s.name.toLowerCase()))
+    // stessa regola del database: nome + marca
+    const key = (name: string, brand: string | null | undefined) => `${name.trim().toLowerCase()}|${(brand ?? "").trim().toLowerCase()}`
+    const names = new Set(parsed.data.supplements.map((s) => key(s.name, s.brand)))
     const toDeactivate = parsed.data.deactivate_missing
-      ? existing.filter((e) => e.is_active && !names.has(e.name.toLowerCase()))
+      ? existing.filter((e) => e.is_active && !names.has(key(e.name, e.brand)))
       : []
     return { rows, toDeactivate }
   }, [parsed, existingQ.data])

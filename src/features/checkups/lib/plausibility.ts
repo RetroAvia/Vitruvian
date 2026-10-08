@@ -24,46 +24,49 @@ const LIMITS = {
 
 const CIRC_LIMIT_CM = 4
 
-/** Visita precedente alla data indicata (escludendo quella in modifica). */
-export function findPreviousCheckup(checkups: Checkup[], date: string, excludeId?: string) {
-  let prev: Checkup | undefined
-  for (const c of checkups) {
-    if (c.id === excludeId || c.checkup_date >= date) continue
-    if (!prev || c.checkup_date > prev.checkup_date) prev = c
-  }
-  return prev
+/** Visite precedenti alla data indicata (dalla più recente), escludendo quella in modifica. */
+export function findPreviousCheckup(checkups: Checkup[], date: string, excludeId?: string): Checkup[] {
+  return checkups.filter((c) => c.id !== excludeId && c.checkup_date < date).sort((a, b) => (a.checkup_date < b.checkup_date ? 1 : -1))
 }
 
-export function checkPlausibility(values: CheckupFormInput, prev: Checkup | undefined): PlausibilityWarning[] {
-  if (!prev) return []
+const sitesOf = (c: Checkup) => (c.all_sites && typeof c.all_sites === "object" && !Array.isArray(c.all_sites) ? (c.all_sites as Record<string, unknown>) : {})
+
+/**
+ * Confronta ogni valore con l'ultima visita in cui quel dato è stato misurato
+ * (una visita con solo peso non blocca i controlli BIA; la BIA solo con lo stesso strumento).
+ */
+export function checkPlausibility(values: CheckupFormInput, previous: Checkup[] | Checkup | undefined): PlausibilityWarning[] {
+  const prevs = Array.isArray(previous) ? previous : previous ? [previous] : []
+  if (prevs.length === 0) return []
   const warnings: PlausibilityWarning[] = []
-  const sameProtocol = (values.protocol_id || null) === (prev.protocol_id ?? null)
+  const protocol = values.protocol_id || null
 
   for (const [field, cfg] of Object.entries(LIMITS)) {
-    // Le grandezze BIA si confrontano solo con lo stesso strumento
-    if (field !== "weight_kg" && !sameProtocol) continue
     const curr = parseDecimal(values[field as keyof typeof LIMITS])
-    const before = prev[field as keyof typeof LIMITS]
-    if (!isNum(curr) || !isNum(before)) continue
+    if (!isNum(curr)) continue
+    // le grandezze BIA si confrontano solo con l'ultima misura dello stesso strumento
+    const ref = prevs.find((p) => isNum(p[field as keyof typeof LIMITS]) && (field === "weight_kg" || (p.protocol_id ?? null) === protocol))
+    if (!ref) continue
+    const before = ref[field as keyof typeof LIMITS] as number
     const diff = curr - before
     if (Math.abs(diff) > cfg.abs) {
       warnings.push({
         field,
-        message: `${formatSigned(diff, 1)} ${cfg.unit} rispetto all'ultima visita (${formatNumber(before, 1)}): verifica il valore`.replace("  ", " "),
+        message: `${formatSigned(diff, 1)} ${cfg.unit} rispetto all'ultima misura (${formatNumber(before, 1)}): verifica il valore`.replace("  ", " "),
       })
     }
   }
 
-  const prevSites = prev.all_sites && typeof prev.all_sites === "object" && !Array.isArray(prev.all_sites) ? prev.all_sites : {}
   for (const [key, raw] of Object.entries(values.circumferences ?? {})) {
     const curr = parseDecimal(raw)
-    const before = prevSites[key]
-    if (!isNum(curr) || typeof before !== "number") continue
+    if (!isNum(curr)) continue
+    const before = prevs.map((p) => sitesOf(p)[key]).find((v) => typeof v === "number") as number | undefined
+    if (before === undefined) continue
     const diff = curr - before
     if (Math.abs(diff) > CIRC_LIMIT_CM) {
       warnings.push({
         field: `circumferences.${key}`,
-        message: `${formatSigned(diff, 1)} cm rispetto all'ultima visita (${formatNumber(before, 1)})`,
+        message: `${formatSigned(diff, 1)} cm rispetto all'ultima misura (${formatNumber(before, 1)})`,
       })
     }
   }

@@ -1,7 +1,7 @@
 "use client"
 
 import dynamic from "next/dynamic"
-import { Activity, CalendarClock, Compass, Gauge, LayoutDashboard, ScanLine, Stethoscope, TriangleAlert } from "lucide-react"
+import { Activity, CalendarClock, Compass, Gauge, LayoutDashboard, PersonStanding, ScanLine, Stethoscope, TriangleAlert } from "lucide-react"
 import Link from "next/link"
 
 import { TimeRangeControl } from "@/components/charts/time-range-control"
@@ -12,6 +12,7 @@ import { SectionHeader } from "@/components/shared/section-header"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useBiometricReport } from "@/features/biometrics/hooks/use-biometric-report"
+import { QuickWorkoutCard } from "@/features/training/session/quick-workout"
 import { formatDate } from "@/lib/format"
 
 import { EnergyCard } from "./energy-card"
@@ -21,7 +22,8 @@ import { KpiSection } from "./kpi-section"
 import { RecompositionHistory } from "./recomposition-history"
 import { TodayCard } from "./today-card"
 
-// Grafici caricati su richiesta: Recharts non pesa sul primo caricamento
+// Grafici e mappa caricati su richiesta: non pesano sul primo caricamento
+const BodyMapCard = dynamic(() => import("@/features/body/body-view").then((m) => m.BodyMapCard), { ssr: false, loading: () => <Skeleton className="h-[420px] rounded-2xl" /> })
 const CompositionChart = dynamic(() => import("./composition-chart").then((m) => m.CompositionChart), { ssr: false, loading: () => <Skeleton className="h-[420px] rounded-2xl" /> })
 const WeightChart = dynamic(() => import("./weight-chart").then((m) => m.WeightChart), { ssr: false, loading: () => <Skeleton className="h-[360px] rounded-2xl" /> })
 
@@ -72,6 +74,7 @@ export function DashboardView() {
     return (
       <>
         {header}
+        <QuickWorkoutCard className="mb-6" />
         <EmptyState
           icon={ScanLine}
           title="Nessuna visita registrata"
@@ -114,8 +117,14 @@ export function DashboardView() {
               </Button>
             </div>
           )}
+          <QuickWorkoutCard />
           <HeroCard report={report} profile={profile} user={user} />
         </div>
+
+        <section aria-labelledby="sec-body">
+          <SectionHeader id="sec-body" icon={PersonStanding} title="Il tuo corpo" description="Circonferenze e variazioni degli ultimi mesi, cuore e analisi in un colpo d'occhio." />
+          <BodyMapCard />
+        </section>
 
         <section aria-labelledby="sec-today">
           <SectionHeader

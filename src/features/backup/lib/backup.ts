@@ -34,9 +34,26 @@ const TABLES = [
   "meals",
   "meal_items",
   "meal_logs",
+  "training_plans",
+  "training_days",
+  "training_exercises",
+  "workouts",
 ] as const
 
 type TableName = (typeof TABLES)[number]
+
+/** Tabella delle serie della migrazione 0007 (backup precedenti alla 0008). */
+interface LegacySet {
+  workout_id: string
+  exercise_code: string
+  exercise_name: string
+  set_index: number
+  reps: number | null
+  weight_kg: number | null
+  rpe: number | null
+  duration_min: number | null
+  is_warmup: boolean
+}
 
 export interface BackupFile {
   format: typeof BACKUP_FORMAT
@@ -44,7 +61,7 @@ export interface BackupFile {
   exported_at: string
   account: string
   counts: Partial<Record<TableName, number>>
-  tables: Partial<Record<TableName, unknown[]>>
+  tables: Partial<Record<TableName | "workout_sets", unknown[]>>
 }
 
 const PAGE = 1000
@@ -120,13 +137,16 @@ export interface RestoreReport {
   supplements: number
   supplementLogs: number
   diets: number
+  mealLogs: number
   skippedDiets: string[]
+  trainingPlans: number
+  workouts: number
 }
 
-const rows = <T,>(b: BackupFile, t: TableName) => (b.tables[t] ?? []) as T[]
+const rows = <T,>(b: BackupFile, t: TableName | "workout_sets") => (b.tables[t] ?? []) as T[]
 
 export async function restoreBackup(client: Client, b: BackupFile, onStep?: (label: string) => void): Promise<RestoreReport> {
-  const report: RestoreReport = { protocols: 0, checkups: 0, labs: 0, medical: 0, supplements: 0, supplementLogs: 0, diets: 0, skippedDiets: [] }
+  const report: RestoreReport = { protocols: 0, checkups: 0, labs: 0, medical: 0, supplements: 0, supplementLogs: 0, diets: 0, mealLogs: 0, skippedDiets: [], trainingPlans: 0, workouts: 0 }
 
   /* 1. Strumenti BIA: per nome, creando quelli mancanti */
   onStep?.("Strumenti BIA")
@@ -164,6 +184,22 @@ export async function restoreBackup(client: Client, b: BackupFile, onStep?: (lab
 
   /* 3. Visite (import_checkups, idempotente per data) */
   onStep?.("Visite")
+  // siti di misura personalizzati: ricreati se mancano (altrimenti le visite verrebbero rifiutate)
+  const customSites = rows<Tables<"measurement_sites">>(b, "measurement_sites").filter((x) => x.user_id)
+  if (customSites.length) {
+    const { data: curSites, error: se } = await client.from("measurement_sites").select("code")
+    if (se) throw new Error(se.message)
+    const known = new Set((curSites ?? []).map((x) => x.code))
+    const { data: auth } = await client.auth.getUser()
+    const missing = customSites.filter((x) => !known.has(x.code))
+    const uid = auth.user?.id
+    if (missing.length && uid) {
+      const { error } = await client
+        .from("measurement_sites")
+        .insert(missing.map((x) => ({ user_id: uid, code: x.code, label: x.label, description: x.description, is_bilateral: x.is_bilateral, sort_order: x.sort_order })))
+      if (error) throw new Error(`Siti di misura: ${error.message}`)
+    }
+  }
   const sites = new Map(rows<Tables<"measurement_sites">>(b, "measurement_sites").map((s) => [s.id, s.code]))
   const bia = new Map(rows<Tables<"bia_readings">>(b, "bia_readings").map((r) => [r.checkup_id, r]))
   const circ = rows<Tables<"circumferences">>(b, "circumferences")
@@ -294,9 +330,104 @@ export async function restoreBackup(client: Client, b: BackupFile, onStep?: (lab
             })),
         })),
     }
-    const { error } = await client.rpc("import_diet_plan", { p: payload as unknown as Json })
+    const { data: newPlanId, error } = await client.rpc("import_diet_plan", { p: payload as unknown as Json })
     if (error) throw new Error(`Dieta ${plan.name}: ${error.message}`)
     report.diets++
+
+    // checklist dei pasti: i pasti nuovi corrispondono ai vecchi nello stesso ordine (giorno → pasto)
+    const oldLogs = rows<Tables<"meal_logs">>(b, "meal_logs")
+    if (oldLogs.length && newPlanId) {
+      const { data: nDays } = await client.from("diet_days").select("id, sort_order").eq("plan_id", newPlanId).order("sort_order")
+      const { data: nMeals } = await client.from("meals").select("id, day_id, sort_order").in("day_id", (nDays ?? []).map((d) => d.id)).order("sort_order")
+      const oDays = days.filter((d) => d.plan_id === plan.id).sort((a, c) => a.sort_order - c.sort_order)
+      const mealMap = new Map<string, string>()
+      oDays.forEach((od, i) => {
+        const nd = nDays?.[i]
+        if (!nd) return
+        const om = meals.filter((m) => m.day_id === od.id).sort((a, c) => a.sort_order - c.sort_order)
+        const nm = (nMeals ?? []).filter((m) => m.day_id === nd.id)
+        om.forEach((m, j) => {
+          const target = nm[j]
+          if (target) mealMap.set(m.id, target.id)
+        })
+      })
+      const logs = oldLogs.filter((l) => mealMap.has(l.meal_id)).map((l) => ({ meal_id: mealMap.get(l.meal_id) as string, log_date: l.log_date, status: l.status, notes: l.notes }))
+      for (let i = 0; i < logs.length; i += 500) {
+        const { error: le } = await client.from("meal_logs").upsert(logs.slice(i, i + 500), { onConflict: "user_id,meal_id,log_date" })
+        if (le) throw new Error(`Checklist pasti: ${le.message}`)
+      }
+      report.mealLogs += logs.length
+    }
+  }
+
+  /* 8. Allenamento: schede (con le sessioni collegate) e poi le sessioni libere */
+  onStep?.("Allenamento")
+  const tDays = rows<Tables<"training_days">>(b, "training_days")
+  const tEx = rows<Tables<"training_exercises">>(b, "training_exercises")
+  const legacy = rows<LegacySet>(b, "workout_sets")
+  const allWorkouts = rows<Tables<"workouts">>(b, "workouts")
+  const dayLabel = new Map(tDays.map((d) => [d.id, d.label]))
+  const TYPES = ["normal", "warmup", "drop", "rest_pause", "failure"] as const
+  const toHistory = (w: Tables<"workouts">) => {
+    let exercises: Array<{ code: string; name: string; sets: unknown[] }>
+    if (Array.isArray(w.exercises) && w.exercises.length > 0) {
+      // formato compatto (0008): { c, n, s: [[reps, kg, rpe, tipo]], m }
+      exercises = (w.exercises as Array<{ c: string; n: string; s?: Array<[number, number | null, number | null, number]>; m?: number | null }>).map((e) => ({
+        code: e.c,
+        name: e.n,
+        sets: e.m ? [{ reps: null, weight_kg: null, duration_min: e.m }] : (e.s ?? []).map((x) => ({ reps: x[0], weight_kg: x[1], rpe: x[2], type: TYPES[x[3]] ?? "normal" })),
+      }))
+    } else {
+      const byCode = new Map<string, { code: string; name: string; sets: unknown[] }>()
+      for (const s of legacy.filter((x) => x.workout_id === w.id).sort((a, c) => a.set_index - c.set_index)) {
+        const g = byCode.get(s.exercise_code) ?? { code: s.exercise_code, name: s.exercise_name, sets: [] }
+        g.sets.push({ reps: s.reps, weight_kg: s.weight_kg, rpe: s.rpe, duration_min: s.duration_min, warmup: s.is_warmup })
+        byCode.set(s.exercise_code, g)
+      }
+      exercises = [...byCode.values()]
+    }
+    return { date: w.workout_date, title: w.title, day_label: w.plan_day_id ? (dayLabel.get(w.plan_day_id) ?? null) : null, duration_min: w.duration_min, session_rpe: w.session_rpe, notes: w.notes, exercises }
+  }
+  const linked = new Set<string>()
+  for (const plan of rows<Tables<"training_plans">>(b, "training_plans")) {
+    const days = tDays.filter((d) => d.plan_id === plan.id).sort((a, c) => a.sort_order - c.sort_order)
+    const dayIds = new Set(days.map((d) => d.id))
+    const history = allWorkouts.filter((w) => w.plan_day_id && dayIds.has(w.plan_day_id))
+    history.forEach((w) => linked.add(w.id))
+    const payload = {
+      source: "manual",
+      activate: plan.is_active,
+      plan: {
+        name: plan.name,
+        coach: plan.coach,
+        goal: plan.goal,
+        split: plan.split,
+        days_per_week: plan.days_per_week,
+        valid_from: plan.valid_from,
+        valid_to: plan.valid_to,
+        notes: plan.notes,
+        days: days.map((d) => ({
+          label: d.label,
+          day_of_week: d.day_of_week,
+          focus: d.focus,
+          exercises: tEx
+            .filter((e) => e.day_id === d.id)
+            .sort((a, c) => a.sort_order - c.sort_order)
+            .map(({ id: _i, day_id: _d, user_id: _u, created_at: _c, updated_at: _up, sort_order: _o, exercise_code, ...rest }) => ({ code: exercise_code, ...rest })),
+        })),
+      },
+      history: history.map(toHistory),
+    }
+    const { data, error } = await client.rpc("import_training", { p: payload as unknown as Json })
+    if (error) throw new Error(`Scheda ${plan.name}: ${error.message}`)
+    report.trainingPlans++
+    report.workouts += (data as { workouts?: number } | null)?.workouts ?? 0
+  }
+  const free = allWorkouts.filter((w) => !linked.has(w.id)).map(toHistory)
+  for (let i = 0; i < free.length; i += 200) {
+    const { data, error } = await client.rpc("import_training", { p: { source: "manual", history: free.slice(i, i + 200) } as unknown as Json })
+    if (error) throw new Error(`Sessioni: ${error.message}`)
+    report.workouts += (data as { workouts?: number } | null)?.workouts ?? 0
   }
 
   return report

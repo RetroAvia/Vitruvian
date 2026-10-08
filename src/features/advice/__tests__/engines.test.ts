@@ -88,3 +88,76 @@ describe("referti", () => {
     expect(m[0]?.value).toBe(412)
   })
 })
+
+describe("allenamento", () => {
+  it("stima il massimale e riconosce gli esercizi dal nome", async () => {
+    const { e1rm, resolveExercise } = await import("@/features/training/engine/analysis")
+    expect(e1rm(100, 1)).toBe(100)
+    expect(Math.round(e1rm(80, 8) ?? 0)).toBe(101)
+    expect(resolveExercise("", "Panca piana").code).toBe("bench_press")
+    expect(resolveExercise("rdl", "RDL").code).toBe("romanian_deadlift")
+  })
+  it("calcola le proporzioni e le asimmetrie dalle circonferenze", async () => {
+    const { asymmetries, proportions } = await import("@/features/training/engine/physique")
+    const p = proportions({ shoulders: 118, waist: 80, arm: 36, neck: 39 })
+    expect(p.find((x) => x.key === "shoulders_waist")?.status).toBe("ok")
+    expect(p.find((x) => x.key === "arm_neck")?.status).toBe("low")
+    const a = asymmetries({ arm_left: 36, arm_right: 37.4 })
+    expect(a[0]?.relevant).toBe(true)
+    expect(a[0]?.weaker).toBe("sinistro")
+  })
+  it("usa i riferimenti femminili (clessidra) per il profilo donna", async () => {
+    const { proportions } = await import("@/features/training/engine/physique")
+    const p = proportions({ shoulders: 100, waist: 68, hips: 84, arm: 27, neck: 32 }, "female")
+    expect(p.find((x) => x.key === "hips_waist")?.status).toBe("low")
+    expect(p.find((x) => x.key === "hips_waist")?.lowMeans).toContain("glutes")
+    expect(p.some((x) => x.key === "arm_neck")).toBe(false)
+  })
+  it("deforma la figura femminile mantenendo l'asse di simmetria", async () => {
+    const { bodyGeometry } = await import("@/components/body/body-geometry")
+    const m = bodyGeometry("male")
+    const f = bodyGeometry("female")
+    expect(f.place([100, 180])[0]).toBe(100)
+    expect(f.place([70, 180])[0] > 70).toBe(true)
+    expect(f.place([70, 230])[0] < 70).toBe(true)
+    expect(f.silhouette.length).toBe(m.silhouette.length)
+  })
+})
+
+describe("tecniche e progressione", () => {
+  it("genera le serie della piramide e del drop set", async () => {
+    const { planSets } = await import("@/features/training/engine/techniques")
+    const base = { sets: 4, reps_min: 6, reps_max: 8, rest_seconds: 120, set_scheme: null, duration_min: null }
+    const pyr = planSets({ ...base, technique: "pyramid" }, 100)
+    expect(pyr.map((s) => s.reps).join("-")).toBe("12-10-8-6")
+    expect(pyr[3]?.weight).toBe(100)
+    const drop = planSets({ ...base, technique: "drop_set" }, 100)
+    expect(drop.length).toBe(6)
+    expect(drop[4]?.weight).toBe(80)
+  })
+  it("doppia progressione: aumenta solo se chiudi tutte le serie al massimo", async () => {
+    const { suggestLoad } = await import("@/features/training/engine/techniques")
+    const up = suggestLoad([[8, 80, null, 0], [8, 80, null, 0], [8, 80, null, 0]], { reps_min: 6, reps_max: 8 }, { strength: true })
+    expect(up.direction).toBe("up")
+    expect(up.weight).toBe(82.5)
+    const same = suggestLoad([[8, 80, null, 0], [7, 80, null, 0]], { reps_min: 6, reps_max: 8 }, { strength: true })
+    expect(same.direction).toBe("same")
+    const down = suggestLoad([[3, 80, null, 0], [3, 80, null, 0]], { reps_min: 6, reps_max: 8 }, { strength: true })
+    expect(down.direction).toBe("down")
+  })
+  it("calcola i dischi per lato", async () => {
+    const { platesPerSide } = await import("@/features/training/engine/techniques")
+    expect(platesPerSide(102.5)?.plates.join("+")).toBe("25+15+1.25")
+    expect(platesPerSide(15)).toBe(null)
+  })
+  it("ricostruisce progressi e volume dai riepiloghi compatti", async () => {
+    const { exerciseProgress, loggedVolume } = await import("@/features/training/engine/analysis")
+    const w = (date: string, e1rm: number) => ({ id: date, user_id: "u", workout_date: date, plan_day_id: null, title: "Push", duration_min: 60, session_rpe: 8, notes: null, source: "manual" as const, total_sets: 3, total_volume: 1800, created_at: "", updated_at: "", summary: [{ c: "bench_press", n: "Panca", sets: 3, reps: 24, vol: 1800, e1rm, top: [80, 8] as [number, number], maxr: 8 }] })
+    const ws = [w("2026-09-30", 104), w("2026-09-16", 100), w("2026-09-02", 98)]
+    const p = exerciseProgress(ws, "2026-10-07")
+    expect(p[0]?.best.value).toBe(104)
+    expect(p[0]?.status).toBe("progress")
+    const v = loggedVolume(ws, "2026-10-07", 4)
+    expect(v.perMuscle.chest).toBe(1.5)
+  })
+})

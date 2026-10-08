@@ -8,8 +8,10 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { MEAL_SLOT_LABELS } from "@/config/constants"
 import { useImportDietPlan } from "@/features/nutrition/api/nutrition"
+import { mealText } from "@/features/nutrition/engine/meal-text"
 import { dayTotals, macroKcal, mealTotals } from "@/features/nutrition/engine/totals"
 import type { DayWithMeals, MealWithItems } from "@/features/nutrition/types"
+import { MEAL_SLOT_EMOJI } from "@/lib/emoji"
 import { formatNumber, isNum } from "@/lib/format"
 import { playSound } from "@/lib/sound"
 
@@ -66,14 +68,18 @@ function toTree(d: DietImport): DayWithMeals[] {
   }))
 }
 
-export function DietBridge() {
+/**
+ * @param embeddedText risposta incollata altrove (Coach AI): niente passaggi di prompt
+ *        e incolla, solo verifica e import della parte "vitruvian.diet.v1".
+ */
+export function DietBridge({ embeddedText, onImported }: { embeddedText?: string; onImported?: () => void } = {}) {
   const importM = useImportDietPlan()
   const [text, setText] = useState("")
   const [activate, setActivate] = useState(true)
   const [done, setDone] = useState(false)
 
   const prompt = useMemo(() => buildDietPrompt(), [])
-  const parsed = useParsedImport(text, dietImportSchema, normalizeDietInput, LABELS)
+  const parsed = useParsedImport(embeddedText ?? text, dietImportSchema, normalizeDietInput, LABELS, "vitruvian.diet.v1")
 
   const preview = useMemo(() => {
     if (parsed.kind !== "ok") return null
@@ -111,6 +117,7 @@ export function DietBridge() {
       await importM.mutateAsync({ ...parsed.data, schema: "vitruvian.diet.v1", activate, source: "ai_import" })
       setDone(true)
       setText("")
+      onImported?.()
       playSound("success")
       toast.success("Piano alimentare importato")
     } catch (e) {
@@ -131,29 +138,39 @@ export function DietBridge() {
 
   return (
     <div className="space-y-4">
+      {embeddedText === undefined ? (
       <div className="grid gap-4 lg:grid-cols-2">
-        <PromptStep
-          prompt={prompt}
-          hint={
-            <ol className="list-inside list-decimal space-y-0.5">
-              <li>Apri Gemini, ChatGPT o Claude e incolla il prompt.</li>
-              <li>Allega il PDF o le foto della dieta del nutrizionista.</li>
-              <li>Se mancano i valori nutrizionali, l&apos;IA li stima dalle tabelle CREA/USDA.</li>
-            </ol>
-          }
-        />
-        <PasteStep
-          value={text}
-          onChange={(v) => {
-            setText(v)
-            setDone(false)
-          }}
-          status={status}
-        />
-      </div>
+          <PromptStep
+            prompt={prompt}
+            hint={
+              <ol className="list-inside list-decimal space-y-0.5">
+                <li>Apri Gemini, ChatGPT o Claude e incolla il prompt.</li>
+                <li>Allega il PDF o le foto della dieta del nutrizionista.</li>
+                <li>Se mancano i valori nutrizionali, l&apos;IA li stima dalle tabelle CREA/USDA.</li>
+              </ol>
+            }
+          />
+          <PasteStep
+            value={text}
+            onChange={(v) => {
+              setText(v)
+              setDone(false)
+            }}
+            status={status}
+          />
+        </div>
+      ) : (
+        status &&
+        !status.ok && (
+          <p role="alert" className="rounded-xl bg-danger/10 p-3 text-xs text-danger ring-1 ring-inset ring-danger/25">
+            {status.message}
+            {"issues" in status && status.issues?.length ? `: ${status.issues.slice(0, 3).join(" · ")}` : ""}
+          </p>
+        )
+      )}
 
       {done && (
-        <StepCard n={4} title="Import completato" done>
+        <StepCard n={embeddedText === undefined ? 4 : undefined} title="Import completato" done>
           <p className="flex items-center gap-2 text-sm">
             <CheckCircle2 className="size-4 text-gain" />
             Piano salvato{activate ? " e attivato" : ""}.
@@ -165,7 +182,7 @@ export function DietBridge() {
       )}
 
       {preview && parsed.kind === "ok" && (
-        <StepCard n={3} title="Verifica e importa" description="Pasti, alimenti e totali per giorno">
+        <StepCard n={embeddedText === undefined ? 3 : undefined} title="Verifica e importa" description="Pasti, alimenti e totali per giorno">
           <div className="mb-4 flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground">
             {parsed.data.professional && <span>{parsed.data.professional}</span>}
             {preview.target !== null && <span>Obiettivo {formatNumber(preview.target, 0)} kcal</span>}
@@ -194,14 +211,13 @@ export function DietBridge() {
                   {d.meals.map((m) => (
                     <li key={m.id} className="text-xs">
                       <p className="font-medium">
+                        <span aria-hidden className="mr-1">{MEAL_SLOT_EMOJI[m.slot]}</span>
                         {m.label ?? MEAL_SLOT_LABELS[m.slot]}
                         {m.time_hint && <span className="ml-1 text-muted-foreground">· {m.time_hint}</span>}
                         <span className="ml-1 tabular text-muted-foreground">· {formatNumber(mealTotals(m).kcal, 0)} kcal</span>
                       </p>
                       <p className="mt-0.5 text-muted-foreground">
-                        {m.items
-                          .map((it) => `${it.food_name}${isNum(it.quantity) ? ` ${formatNumber(it.quantity, 0)} ${it.unit}` : ""}${it.alternative_group ? ` [alt ${it.alternative_group}]` : ""}`)
-                          .join(" · ")}
+                        {mealText(m.items, " · ")}
                       </p>
                     </li>
                   ))}

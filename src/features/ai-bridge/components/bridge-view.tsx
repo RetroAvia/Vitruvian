@@ -1,6 +1,6 @@
 "use client"
 
-import { FlaskConical, HeartPulse, Pill, Salad, ScanLine, Sparkles } from "lucide-react"
+import { Dumbbell, FlaskConical, HeartPulse, Pill, Salad, ScanLine, Sparkles } from "lucide-react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
 import { PageHeader } from "@/components/shared/page-header"
@@ -11,15 +11,17 @@ import { DietBridge } from "./diet-bridge"
 import { LabBridge } from "./lab-bridge"
 import { MedicalBridge } from "./medical-bridge"
 import { SupplementBridge } from "./supplement-bridge"
+import { TrainingBridge } from "./training-bridge"
 
-type Tab = "checkups" | "labs" | "medical" | "supplements" | "diet"
-const TAB_IDS: Tab[] = ["checkups", "labs", "medical", "supplements", "diet"]
+type Tab = "checkups" | "labs" | "medical" | "supplements" | "training" | "diet"
+const TAB_IDS: Tab[] = ["checkups", "labs", "medical", "supplements", "training", "diet"]
 
 const TABS: Array<{ id: Tab; label: string; icon: typeof ScanLine; badge?: string }> = [
   { id: "checkups", label: "Visita (BIA e misure)", icon: ScanLine },
   { id: "labs", label: "Analisi del sangue", icon: FlaskConical },
   { id: "medical", label: "Referti (ECG, visite…)", icon: HeartPulse },
   { id: "supplements", label: "Integratori", icon: Pill },
+  { id: "training", label: "Allenamento", icon: Dumbbell },
   { id: "diet", label: "Dieta", icon: Salad },
 ]
 
@@ -73,6 +75,7 @@ export function BridgeView() {
         {tab === "labs" && <LabBridge />}
         {tab === "medical" && <MedicalBridge />}
         {tab === "supplements" && <SupplementBridge />}
+        {tab === "training" && <TrainingBridge />}
         {tab === "diet" && <DietBridge />}
       </div>
     </>

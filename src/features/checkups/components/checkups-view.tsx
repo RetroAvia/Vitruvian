@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button"
 import { NativeSelect } from "@/components/ui/native-select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useProfile } from "@/features/profile/api/profile"
-import { formatDate } from "@/lib/format"
+import { formatDate, shiftISO, todayISO } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { useUiStore, type CheckupColumnGroup } from "@/stores/ui-store"
 import type { Checkup } from "@/types/domain"
@@ -63,9 +63,7 @@ export function CheckupsView() {
   )
 
   const filtered = useMemo(() => {
-    const cutoff = new Date()
-    cutoff.setFullYear(cutoff.getFullYear() - 1)
-    const cutoffISO = cutoff.toISOString().slice(0, 10)
+    const cutoffISO = shiftISO(todayISO(), -365)
     return checkups.filter((c) => {
       if (period === "12m" && c.checkup_date < cutoffISO) return false
       if (/^\d{4}$/.test(period) && !c.checkup_date.startsWith(period)) return false
@@ -87,7 +85,7 @@ export function CheckupsView() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
-    a.download = `vitruvian-visite-${new Date().toISOString().slice(0, 10)}.csv`
+    a.download = `vitruvian-visite-${todayISO()}.csv`
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -146,7 +144,7 @@ export function CheckupsView() {
                 aria-label="Periodo"
                 value={period}
                 onChange={(e) => setPeriod(e.target.value)}
-                className="h-9 w-40 rounded-lg"
+                className="h-9 w-44 rounded-lg"
               >
                 <option value="all">Tutto lo storico</option>
                 <option value="12m">Ultimi 12 mesi</option>

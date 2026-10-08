@@ -14,6 +14,7 @@ import { energyBalance } from "@/features/nutrition/engine/balance"
 import { foodProfile } from "@/features/nutrition/engine/foods"
 import { useSupplements } from "@/features/supplements/api/supplements"
 import { computeTotals } from "@/features/supplements/engine/analysis"
+import { useTraining } from "@/features/training/hooks/use-training"
 import { shiftISO, todayISO } from "@/lib/format"
 
 import { buildAdvice, healthScore, type AdviceInput } from "../engine/advice"
@@ -32,9 +33,10 @@ export function useHealthContext() {
   const treeQ = usePlanTree(activePlan?.id ?? null)
   const from = useMemo(() => shiftISO(todayISO(), -30), [])
   const logsQ = useMealLogs(from)
+  const training = useTraining()
 
   const isPending =
-    bioPending || labsQ.isPending || medQ.isPending || supQ.isPending || plansQ.isPending || (Boolean(activePlan) && treeQ.isPending)
+    bioPending || training.isPending || labsQ.isPending || medQ.isPending || supQ.isPending || plansQ.isPending || (Boolean(activePlan) && treeQ.isPending)
 
   const result = useMemo(() => {
     if (isPending) return null
@@ -43,7 +45,7 @@ export function useHealthContext() {
     const labs = labsQ.data && labsQ.data.length > 0 ? analyzeLabs(labsQ.data, profile) : null
     const medical = medQ.data && medQ.data.length > 0 ? analyzeMedical(medQ.data, sex, today) : null
     const supplements = supQ.data ?? []
-    const { totals: supTotals } = computeTotals(supplements, sex)
+    const { totals: supTotals } = computeTotals(supplements, sex, today)
     const tree = activePlan ? treeQ.data : undefined
     const food = tree ? foodProfile(tree.days) : null
     const planKcal = tree?.plan.target_kcal ?? (food?.avgKcal ? Math.round(food.avgKcal) : null)
@@ -71,9 +73,10 @@ export function useHealthContext() {
       supplements,
       supTotals,
       medical,
+      training: training.report,
     }
     return { input, advice: buildAdvice(input), score: healthScore(input) }
-  }, [isPending, profile, report, labsQ.data, medQ.data, supQ.data, activePlan, treeQ.data, logsQ.data])
+  }, [isPending, profile, report, labsQ.data, medQ.data, supQ.data, activePlan, treeQ.data, logsQ.data, training.report])
 
   return { ...result, isPending }
 }

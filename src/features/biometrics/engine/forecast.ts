@@ -169,8 +169,12 @@ export function forecastGoals(report: BiometricReport, profile: Profile | null, 
     if (!trend) continue
     const remaining = target - trend.current
     const tol = def.key === "fat_pct" ? 0.3 : def.key === "waist" ? 0.5 : 0.3
+    // obiettivo superato nella direzione voluta (es. peso target 75, ora 73 partendo da 80) = raggiunto
+    const startRow = report.chronological.find((c) => isNum(def.get(c)) && (!profile.goals_start_date || c.checkup_date >= profile.goals_start_date))
+    const start = startRow ? (def.get(startRow) as number) : null
+    const overshot = isNum(start) && Math.abs(target - start) > tol && Math.sign(target - start) !== Math.sign(remaining) && Math.sign(target - start) * (trend.current - target) > 0
     let direction: GoalForecast["direction"]
-    if (Math.abs(remaining) <= tol) direction = "reached"
+    if (Math.abs(remaining) <= tol || overshot) direction = "reached"
     else if (Math.abs(trend.perMonth) < (def.key === "fat_pct" ? 0.1 : 0.15)) direction = "flat"
     else direction = Math.sign(trend.perMonth) === Math.sign(remaining) ? "toward" : "away"
 

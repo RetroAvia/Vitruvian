@@ -77,8 +77,9 @@ function CheckupForm({ checkup, checkups, sites, protocols, heightCm, onDone, on
   const save = useSaveCheckup()
 
   const defaultValues = useMemo(() => {
-    const latest = checkups[checkups.length - 1]
-    return checkupToFormInput(checkup, { protocolId: latest?.protocol_id ?? protocols[0]?.id ?? null })
+    // ultimo strumento BIA usato (le visite con solo peso non hanno strumento)
+    const lastProtocol = [...checkups].reverse().find((c) => c.protocol_id)?.protocol_id
+    return checkupToFormInput(checkup, { protocolId: lastProtocol ?? protocols[0]?.id ?? null })
   }, [checkup, checkups, protocols])
 
   const {
@@ -109,6 +110,14 @@ function CheckupForm({ checkup, checkups, sites, protocols, heightCm, onDone, on
       if (side === "none") continue
       rows.push({ key, label: `${siteLabel.get(site) ?? site} (${side === "left" ? "sx" : "dx"})`, primary: true })
     }
+    // siti bilaterali: sinistro e destro tra gli "altri siti" (servono per le asimmetrie in Allenamento)
+    for (const s of sites.filter((x) => x.is_bilateral)) {
+      for (const side of ["left", "right"] as const) {
+        const key = `${s.code}_${side}`
+        if (rows.some((r) => r.key === key)) continue
+        rows.push({ key, label: `${s.label} (${side === "left" ? "sx" : "dx"})`, primary: false })
+      }
+    }
     return rows
   }, [sites, siteLabel, defaultValues.circumferences])
 
@@ -119,11 +128,12 @@ function CheckupForm({ checkup, checkups, sites, protocols, heightCm, onDone, on
   const hiddenSitesCount = siteRows.length - siteRows.filter((r) => r.primary).length
 
   /* ---------- Plausibilità e anteprima calcoli (in tempo reale) ---------- */
-  const prev = useMemo(
+  const previous = useMemo(
     () => findPreviousCheckup(checkups, values.checkup_date || "9999-12-31", checkup?.id),
     [checkups, values.checkup_date, checkup?.id],
   )
-  const warnings = useMemo(() => checkPlausibility(values, prev), [values, prev])
+  const prev = previous[0]
+  const warnings = useMemo(() => checkPlausibility(values, previous), [values, previous])
   const warningFor = (field: string) => warnings.find((w) => w.field === field)?.message
 
   const weight = parseDecimal(values.weight_kg)

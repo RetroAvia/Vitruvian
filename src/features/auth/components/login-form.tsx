@@ -1,6 +1,7 @@
 "use client"
 
 import { ArrowRight, LoaderCircle, Lock, Mail, Smartphone } from "lucide-react"
+import { useQueryClient } from "@tanstack/react-query"
 import { useRouter } from "next/navigation"
 import { useState, type FormEvent } from "react"
 import { toast } from "sonner"
@@ -14,6 +15,7 @@ import { createClient } from "@/lib/supabase/client"
 
 export function LoginForm({ next, mfa = false }: { next: string; mfa?: boolean }) {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [code, setCode] = useState("")
@@ -41,12 +43,14 @@ export function LoginForm({ next, mfa = false }: { next: string; mfa?: boolean }
       setError("Codice non valido o scaduto. Usa il codice attuale dell'app.")
       return
     }
+    // nessun dato di un account precedente nella cache in memoria
+    queryClient.clear()
     router.replace(next)
     router.refresh()
   }
 
   async function cancelMfa() {
-    await createClient().auth.signOut()
+    await createClient().auth.signOut({ scope: "local" })
     setStep("password")
     setCode("")
     setError(null)
@@ -76,6 +80,8 @@ export function LoginForm({ next, mfa = false }: { next: string; mfa?: boolean }
       return
     }
 
+    // nessun dato di un account precedente nella cache in memoria
+    queryClient.clear()
     router.replace(next)
     router.refresh()
   }
@@ -132,8 +138,8 @@ export function LoginForm({ next, mfa = false }: { next: string; mfa?: boolean }
       <GlassCard className="relative overflow-hidden p-6 sm:p-7">
         <div aria-hidden className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-neon/70 to-transparent" />
 
-        <h1 className="text-xl font-semibold">Bentornato</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Accedi per vedere i tuoi progressi.</p>
+        <h1 className="text-xl font-semibold">Accedi a Vitruvian</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Ogni account vede solo i propri dati.</p>
 
         <form onSubmit={onSubmit} className="mt-6 space-y-4" noValidate>
           <div className="space-y-2">
