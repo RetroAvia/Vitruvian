@@ -1,6 +1,6 @@
 "use client"
 
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { onlineManager, QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { ThemeProvider } from "next-themes"
 import { useEffect, useState, type ReactNode } from "react"
 
@@ -13,7 +13,7 @@ function makeQueryClient() {
     defaultOptions: {
       queries: {
         staleTime: 60_000, // i dati biometrici cambiano raramente
-        gcTime: 10 * 60_000,
+        gcTime: 24 * 60 * 60_000, // restano in memoria (e nella copia locale) anche le pagine non aperte: utile offline
         refetchOnWindowFocus: false,
         retry: 1,
       },
@@ -28,6 +28,8 @@ export function AppProviders({ children }: { children: ReactNode }) {
   // Reidrata lo store UI solo lato client (vedi skipHydration)
   useEffect(() => {
     void useUiStore.persist.rehydrate()
+    // app aperta già senza rete: TanStack parte "online" finché non arriva un evento
+    onlineManager.setOnline(navigator.onLine)
   }, [])
 
   return (

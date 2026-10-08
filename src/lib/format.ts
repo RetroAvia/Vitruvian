@@ -66,3 +66,22 @@ export function shiftISO(iso: string, days: number): string {
   const pad = (n: number) => String(n).padStart(2, "0")
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
+
+const dayMonth = new Intl.DateTimeFormat("it-IT", { day: "numeric", month: "short" })
+
+/** "oggi", "ieri", "3 giorni fa", altrimenti "12 set". */
+export function relativeDay(iso: string | null | undefined, today = todayISO()): string {
+  if (!iso) return EMPTY
+  const d = daysBetween(iso, today)
+  if (d === 0) return "oggi"
+  if (d === 1) return "ieri"
+  if (d > 1 && d < 7) return `${d} giorni fa`
+  return dayMonth.format(parseISODate(iso))
+}
+
+/** Data locale (YYYY-MM-DD) di un timestamp: evita lo slittamento di UTC dopo mezzanotte. */
+export function localDateISO(ts: string | number | Date): string {
+  const d = new Date(ts)
+  const pad = (n: number) => String(n).padStart(2, "0")
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}

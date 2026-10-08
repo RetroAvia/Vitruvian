@@ -838,6 +838,228 @@ export type Database = {
         }
         Relationships: []
       }
+      training_plans: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          coach: string | null
+          goal: string
+          split: string | null
+          days_per_week: number | null
+          valid_from: string | null
+          valid_to: string | null
+          is_active: boolean
+          notes: string | null
+          source: Database["public"]["Enums"]["data_source"]
+          raw_payload: Json | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id?: string
+          name: string
+          coach?: string | null
+          goal?: string
+          split?: string | null
+          days_per_week?: number | null
+          valid_from?: string | null
+          valid_to?: string | null
+          is_active?: boolean
+          notes?: string | null
+          source?: Database["public"]["Enums"]["data_source"]
+          raw_payload?: Json | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          coach?: string | null
+          goal?: string
+          split?: string | null
+          days_per_week?: number | null
+          valid_from?: string | null
+          valid_to?: string | null
+          is_active?: boolean
+          notes?: string | null
+          source?: Database["public"]["Enums"]["data_source"]
+          raw_payload?: Json | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      training_days: {
+        Row: {
+          id: string
+          plan_id: string
+          user_id: string
+          label: string
+          day_of_week: number | null
+          focus: string | null
+          sort_order: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          plan_id: string
+          user_id?: string
+          label: string
+          day_of_week?: number | null
+          focus?: string | null
+          sort_order?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          plan_id?: string
+          user_id?: string
+          label?: string
+          day_of_week?: number | null
+          focus?: string | null
+          sort_order?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      training_exercises: {
+        Row: {
+          id: string
+          day_id: string
+          user_id: string
+          exercise_code: string
+          name: string
+          muscle_primary: string | null
+          muscles_secondary: string[]
+          pattern: string | null
+          sets: number | null
+          reps_min: number | null
+          reps_max: number | null
+          target_rir: number | null
+          rest_seconds: number | null
+          tempo: string | null
+          load_kg: number | null
+          duration_min: number | null
+          superset_group: number | null
+          notes: string | null
+          sort_order: number
+          technique: string
+          set_scheme: Json | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          day_id: string
+          user_id?: string
+          exercise_code: string
+          name: string
+          muscle_primary?: string | null
+          muscles_secondary?: string[]
+          pattern?: string | null
+          sets?: number | null
+          reps_min?: number | null
+          reps_max?: number | null
+          target_rir?: number | null
+          rest_seconds?: number | null
+          tempo?: string | null
+          load_kg?: number | null
+          duration_min?: number | null
+          superset_group?: number | null
+          notes?: string | null
+          sort_order?: number
+          technique?: string
+          set_scheme?: Json | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          day_id?: string
+          user_id?: string
+          exercise_code?: string
+          name?: string
+          muscle_primary?: string | null
+          muscles_secondary?: string[]
+          pattern?: string | null
+          sets?: number | null
+          reps_min?: number | null
+          reps_max?: number | null
+          target_rir?: number | null
+          rest_seconds?: number | null
+          tempo?: string | null
+          load_kg?: number | null
+          duration_min?: number | null
+          superset_group?: number | null
+          notes?: string | null
+          sort_order?: number
+          technique?: string
+          set_scheme?: Json | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      workouts: {
+        Row: {
+          id: string
+          user_id: string
+          workout_date: string
+          plan_day_id: string | null
+          title: string
+          duration_min: number | null
+          session_rpe: number | null
+          notes: string | null
+          source: Database["public"]["Enums"]["data_source"]
+          exercises: Json
+          summary: Json
+          total_sets: number
+          total_volume: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id?: string
+          workout_date: string
+          plan_day_id?: string | null
+          title?: string
+          duration_min?: number | null
+          session_rpe?: number | null
+          notes?: string | null
+          source?: Database["public"]["Enums"]["data_source"]
+          exercises?: Json
+          summary?: Json
+          total_sets?: number
+          total_volume?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          workout_date?: string
+          plan_day_id?: string | null
+          title?: string
+          duration_min?: number | null
+          session_rpe?: number | null
+          notes?: string | null
+          source?: Database["public"]["Enums"]["data_source"]
+          exercises?: Json
+          summary?: Json
+          total_sets?: number
+          total_volume?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       v_checkups: {
@@ -958,6 +1180,18 @@ export type Database = {
         Args: { p: Json }
         Returns: string[]
       }
+      import_training: {
+        Args: { p: Json }
+        Returns: Json
+      }
+      save_workout: {
+        Args: { p: Json }
+        Returns: string
+      }
+      save_training_plan: {
+        Args: { p: Json }
+        Returns: string
+      }
       import_checkups: {
         Args: { p: Json }
         Returns: string[]
@@ -971,7 +1205,7 @@ export type Database = {
       activity_level: "sedentary" | "light" | "moderate" | "active" | "very_active"
       body_side: "none" | "left" | "right"
       data_source: "manual" | "ai_import" | "sheet_import"
-      import_kind: "checkup" | "diet" | "lab" | "medical" | "supplement"
+      import_kind: "checkup" | "diet" | "lab" | "medical" | "supplement" | "training"
       import_status: "pending" | "applied" | "rejected" | "failed"
       lab_category:
         | "metabolic"
@@ -1036,7 +1270,7 @@ export const Constants = {
       activity_level: ["sedentary", "light", "moderate", "active", "very_active"],
       body_side: ["none", "left", "right"],
       data_source: ["manual", "ai_import", "sheet_import"],
-      import_kind: ["checkup", "diet", "lab", "medical", "supplement"],
+      import_kind: ["checkup", "diet", "lab", "medical", "supplement", "training"],
       import_status: ["pending", "applied", "rejected", "failed"],
       lab_category: [
         "metabolic",

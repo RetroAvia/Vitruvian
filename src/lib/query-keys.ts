@@ -19,6 +19,13 @@ export const queryKeys = {
     logs: (from: string) => ["supplements", "logs", from] as const,
     allLogs: ["supplements", "logs"] as const,
   },
+  training: {
+    plans: ["training", "plans"] as const,
+    tree: (id: string) => ["training", "tree", id] as const,
+    workouts: ["training", "workouts"] as const,
+    recent: ["training", "recent"] as const,
+    detail: (id: string) => ["training", "detail", id] as const,
+  },
   diet: {
     plans: ["diet", "plans"] as const,
     tree: (id: string) => ["diet", "tree", id] as const,

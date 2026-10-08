@@ -30,7 +30,7 @@ interface UiState {
   idleLogoutMinutes: number
   /** Copia locale dei dati per l'avvio istantaneo */
   offlineCache: boolean
-  /** Consigli segnati come "fatto": id → data (tornano visibili dopo 30 giorni) */
+  /** Consigli segnati come "fatto": "utente:id" → data (tornano visibili dopo 30 giorni) */
   dismissedAdvice: Record<string, string>
   toggleSidebar: () => void
   setTimeRange: (range: TimeRange) => void
@@ -40,7 +40,8 @@ interface UiState {
   setIdleLogoutMinutes: (value: number) => void
   setOfflineCache: (value: boolean) => void
   dismissAdvice: (id: string, date: string) => void
-  restoreAdvice: () => void
+  /** ripristina i consigli nascosti dell'utente */
+  restoreAdvice: (userId: string) => void
 }
 
 export const useUiStore = create<UiState>()(
@@ -67,7 +68,8 @@ export const useUiStore = create<UiState>()(
       setIdleLogoutMinutes: (idleLogoutMinutes) => set({ idleLogoutMinutes }),
       setOfflineCache: (offlineCache) => set({ offlineCache }),
       dismissAdvice: (id, date) => set((s) => ({ dismissedAdvice: { ...s.dismissedAdvice, [id]: date } })),
-      restoreAdvice: () => set({ dismissedAdvice: {} }),
+      restoreAdvice: (userId) =>
+        set((s) => ({ dismissedAdvice: Object.fromEntries(Object.entries(s.dismissedAdvice).filter(([k]) => !k.startsWith(`${userId}:`))) })),
     }),
     {
       name: "vitruvian-ui",

@@ -3,13 +3,13 @@
 /**
  * Cache locale della sessione (avvio istantaneo).
  * Salva in localStorage lo stato delle query riuscite, legato all'utente e
- * valido 24 ore; al riavvio i dati compaiono subito mentre arrivano quelli
+ * valido 7 giorni (serve anche ad aprire l'app offline, es. in palestra); al riavvio i dati compaiono subito mentre arrivano quelli
  * aggiornati dal server. Cancellata al logout e alla disconnessione automatica.
  */
 import { dehydrate, hydrate, type QueryClient } from "@tanstack/react-query"
 
 const KEY = "vitruvian-cache-v1"
-const MAX_AGE_MS = 24 * 60 * 60 * 1000
+const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000
 
 interface Stored {
   userId: string
@@ -49,4 +49,12 @@ export function clearLocalData(qc?: QueryClient) {
     /* ignore */
   }
   qc?.clear()
+  // copie delle pagine salvate dal service worker (funzionamento offline)
+  try {
+    navigator.serviceWorker?.controller?.postMessage({ type: "clear" })
+    localStorage.removeItem("vitruvian-sw-warm")
+    void caches?.delete("vt-pages-v1")
+  } catch {
+    /* ignore */
+  }
 }

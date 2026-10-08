@@ -1,6 +1,9 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useLayoutEffect, useRef, useState } from "react"
+
+// prima del paint sul client (niente "flash" del valore finale prima dell'animazione)
+const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect
 
 /**
  * Anima un numero da 0 (o dal valore precedente) al valore finale.
@@ -11,7 +14,7 @@ export function useCountUp(target: number | null | undefined, duration = 700): n
   const from = useRef<number>(0)
   const first = useRef(true)
 
-  useEffect(() => {
+  useIsoLayoutEffect(() => {
     if (typeof target !== "number" || !Number.isFinite(target)) {
       setValue(null)
       return

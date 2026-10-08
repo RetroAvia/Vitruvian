@@ -384,6 +384,66 @@
   .hover-lift:hover { transform: none; }
 }
 
+
+/* ---------- Mappa corporea olografica (solo transform/opacity: GPU, nessun repaint) ---------- */
+.body-holo { perspective: 1200px; overflow: hidden; }
+.body-holo-tilt { transform-style: preserve-3d; transition: transform 0.3s ease-out; }
+.body-holo-flip { transform-style: preserve-3d; transition: transform 0.9s cubic-bezier(0.22, 1, 0.36, 1); }
+.body-holo-flip.is-back { transform: rotateY(180deg); }
+.body-holo-face { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.body-holo-back { transform: rotateY(180deg); }
+.body-holo-scan {
+  inset: 0;
+  height: auto;
+  background: linear-gradient(to bottom, transparent 47%, color-mix(in oklab, var(--neon) 22%, transparent) 50%, transparent 53%);
+  animation: holo-scan 6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+.body-holo[data-paused] .body-holo-scan { animation-play-state: paused; }
+@keyframes holo-scan {
+  0% { transform: translateY(-50%); opacity: 0; }
+  10%, 90% { opacity: 1; }
+  100% { transform: translateY(50%); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .body-holo-scan { display: none; }
+  .body-holo-flip, .body-holo-tilt { transition: none; }
+}
+
+/* ---------- Prestazioni e batteria ---------- */
+/* Aloni di sfondo animati solo su desktop con mouse */
+@media (hover: hover) and (pointer: fine) and (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
+  .aurora-blob { animation: aurora-drift 22s ease-in-out infinite alternate; will-change: transform; }
+}
+@keyframes aurora-drift {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(4%, -3%, 0) scale(1.08); }
+  100% { transform: translate3d(-3%, 4%, 0) scale(0.96); }
+}
+/* Telefoni e tablet: niente sfocatura dietro alle card (lo sfondo è statico, il vetro
+   costerebbe GPU a ogni scroll). Card leggermente più opache, stesso aspetto. */
+@media (max-width: 1023px), (hover: none) {
+  .glass, .glass-raised {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background-color: color-mix(in oklab, var(--card) 94%, transparent);
+  }
+  .glass-strong {
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .glass, .glass-raised, .glass-strong { -webkit-backdrop-filter: none; backdrop-filter: none; background-color: var(--card); }
+}
+
+/* Liste lunghe: il browser non disegna gli elementi fuori schermo */
+@utility cv-auto {
+  & > * {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 88px;
+  }
+}
+
 /* Stampa (report per il nutrizionista) */
 @media print {
   @page { margin: 14mm; }
@@ -395,4 +455,11 @@
   main { padding: 0 !important; }
   .print\:border-0 { border: 0 !important; }
   .print\:p-0 { padding: 0 !important; }
+}
+
+/* Pillola "allenamento in corso": più spazio in fondo alle pagine su telefono */
+@media (max-width: 1023px) {
+  html[data-workout-pill] #main {
+    padding-bottom: calc(11rem + env(safe-area-inset-bottom));
+  }
 }
