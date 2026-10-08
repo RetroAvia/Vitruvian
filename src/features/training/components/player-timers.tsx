@@ -3,7 +3,7 @@
 import { Minus, Plus, SkipForward } from "lucide-react"
 import { memo, useEffect, useRef, useState } from "react"
 
-import { playSound } from "@/lib/sound"
+import { playAlert } from "@/lib/sound"
 import { cn } from "@/lib/utils"
 
 const fmt = (s: number) => `${Math.floor(s / 60)}:${String(Math.max(0, s) % 60).padStart(2, "0")}`
@@ -47,6 +47,15 @@ export const RestTimer = memo(function RestTimer({ rest, onChange, onDone }: { r
   useEffect(() => () => {
     if (closeTimer.current) clearTimeout(closeTimer.current)
   }, [])
+  // conto alla rovescia sonoro negli ultimi 3 secondi (solo se il recupero era in corso)
+  const ticked = useRef(0)
+  useEffect(() => {
+    if (left >= 1 && left <= 3 && rest.total > 5 && ticked.current !== left && rest.until - Date.now() > 0) {
+      ticked.current = left
+      playAlert("restTick")
+    }
+  }, [left, rest.total, rest.until])
+
   useEffect(() => {
     if (left > 0) {
       if (closeTimer.current) clearTimeout(closeTimer.current)
@@ -55,15 +64,16 @@ export const RestTimer = memo(function RestTimer({ rest, onChange, onDone }: { r
     }
     if (fired.current) return
     fired.current = true
-    playSound("success")
+    // avviso solo se il recupero è finito "adesso" (non riaprendo l'app molto dopo)
+    if (Date.now() - rest.until < 10_000) playAlert("restEnd")
     try {
-      navigator.vibrate?.([150, 80, 150])
+      navigator.vibrate?.([250, 120, 250, 120, 400])
     } catch {
       /* non supportato */
     }
     handlers.current.onDone?.()
     closeTimer.current = setTimeout(() => handlers.current.onChange(null), 1500)
-  }, [left])
+  }, [left, rest.until])
 
   const r = 26
   const c = 2 * Math.PI * r

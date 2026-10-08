@@ -14,7 +14,10 @@ import {
   Info,
   LoaderCircle,
   Minus,
+  Pause,
+  Pencil,
   Plus,
+  Repeat2,
   RotateCcw,
   Trash2,
   Trophy,
@@ -38,6 +41,8 @@ import { MUSCLES, type Muscle } from "../engine/catalog"
 import { exerciseCues } from "../engine/exercise-info"
 import { BARBELL_EXERCISES, planSets, platesPerSide, suggestLoad, TECHNIQUES, warmupSets, type Suggestion } from "../engine/techniques"
 import { isNetworkError, newId, queueWorkout, readDraftRaw, writeDraftRaw } from "../session/storage"
+import { useRestNotifications } from "../session/rest-push"
+import { useWorkoutSession } from "../session/workout-session"
 import type { CompactSet, SetType, Technique, TrainingDay, TrainingExercise, Workout, WorkoutPayload, WorkoutSummary } from "../types"
 import { ExercisePicker, type PickedExercise } from "./exercise-picker"
 import { Elapsed, RestTimer, useWakeLock, type RestState } from "./player-timers"
@@ -246,6 +251,8 @@ interface Result {
   changes: Array<{ name: string; pct: number }>
   /** salvata sul telefono, in attesa di rete */
   queued: boolean
+  /** id della sessione salvata (per riaprirla in modifica) */
+  id: string
 }
 
 export function WorkoutPlayer({
@@ -275,18 +282,34 @@ export function WorkoutPlayer({
   const [draft, setDraft] = useState<Draft | null>(null)
   const [restored, setRestored] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [confirmCancel, setConfirmCancel] = useState(false)
-  const cancelTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  useEffect(() => () => {
-    if (cancelTimer.current) clearTimeout(cancelTimer.current)
-  }, [])
+  /** foglio di conferma: concludere o chiudere/annullare */
+  const [ask, setAsk] = useState<"finish" | "close" | null>(null)
   const rest = draft?.rest ?? null
   const setRest = useCallback((r: RestState | null) => setDraft((d) => (d ? { ...d, rest: r } : d)), [])
   const [picker, setPicker] = useState(false)
+  /** esercizio da sostituire (macchina occupata): chiave nel registro */
+  const [replacing, setReplacing] = useState<{ key: string; muscle: Muscle | null } | null>(null)
   const [showCues, setShowCues] = useState(false)
   const [result, setResult] = useState<Result | null>(null)
 
   useWakeLock(open && !result)
+
+  // notifiche sul blocco schermo: esercizio, serie fatte e prossima serie
+  const restInfo = useMemo(() => {
+    if (!draft || !rest) return null
+    const ex = draft.exercises[draft.current]
+    if (!ex) return null
+    const done = ex.sets.filter((x) => x.done).length
+    const next = ex.sets.find((x) => !x.done)
+    const after = draft.exercises[draft.current + 1]
+    const nextTxt = next
+      ? `prossima: ${next.reps || next.target || "?"} rip.${next.weight ? ` × ${next.weight} kg` : ""}`
+      : after
+        ? `poi: ${after.name}`
+        : "ultimo esercizio"
+    return `${ex.name} · ${done}/${ex.sets.length} serie · ${nextTxt}`
+  }, [draft, rest])
+  useRestNotifications(userId, rest, restInfo, open && !result && !draft?.id)
 
   const build = useCallback((): Draft | null => {
     const date = todayISO()
@@ -403,6 +426,22 @@ export function WorkoutPlayer({
     if (allDone && e.superset === null && idx < draft.exercises.length - 1) setTimeout(() => go(idx + 1), 400)
   }
 
+  /** Sostituisce un esercizio non ancora iniziato mantenendo serie, ripetizioni e recuperi della scheda. */
+  function replacePicked(p: PickedExercise, key: string) {
+    const ctx: Ctx = { recent, summaries, date: draft?.date ?? todayISO() }
+    update((d) => ({
+      ...d,
+      exercises: d.exercises.map((x) => {
+        if (x.key !== key) return x
+        const n = fromPicked(p, ctx)
+        if (n.cardio || x.cardio) return { ...n, key: x.key }
+        const sets = x.sets.map((st, i) => ({ ...st, done: false, reps: "", rpe: "", weight: n.sets[Math.min(i, n.sets.length - 1)]?.weight ?? "" }))
+        return { ...n, key: x.key, sets, rest: x.rest, superset: x.superset, repsMin: x.repsMin, repsMax: x.repsMax, technique: x.technique, notes: x.notes }
+      }),
+    }))
+    toast.success(`Sostituito con ${p.name}`)
+  }
+
   function addPicked(p: PickedExercise) {
     const ctx: Ctx = { recent, summaries, date: draft?.date ?? todayISO() }
     update((d) => ({ ...d, exercises: [...d.exercises, fromPicked(p, ctx)], current: d.exercises.length }))
@@ -410,6 +449,13 @@ export function WorkoutPlayer({
   }
 
   const previousBest = useMemo(() => new Map(exerciseProgress(summaries.filter((w) => w.id !== draft?.id), todayISO()).map((p) => [p.code, p])), [summaries, draft?.id])
+
+  /** "Fine": chiede conferma (un tocco per sbaglio non chiude la sessione); le modifiche si salvano subito */
+  function requestFinish() {
+    if (!draft || saving) return
+    if (draft.id) void onFinish()
+    else setAsk("finish")
+  }
 
   async function onFinish() {
     if (!draft || saving) return
@@ -480,7 +526,7 @@ export function WorkoutPlayer({
       }
       writeDraftRaw(userId, null, Boolean(draft.id))
       playSound(prs.length ? "celebrate" : "success")
-      if (openRef.current) setResult({ minutes, sets, volume, prs, changes, queued })
+      if (openRef.current) setResult({ minutes, sets, volume, prs, changes, queued, id: payload.id })
       else toast.success("Allenamento salvato")
     } catch (err) {
       playSound("error")
@@ -530,7 +576,15 @@ export function WorkoutPlayer({
           <DialogPrimitive.Description className="sr-only">Registro delle serie con timer di recupero</DialogPrimitive.Description>
 
           {result ? (
-            <ResultScreen result={result} onClose={() => onOpenChange(false)} />
+            <ResultScreen
+              result={result}
+              onClose={() => onOpenChange(false)}
+              onEdit={() => {
+                const id = result.id
+                onOpenChange(false)
+                setTimeout(() => useWorkoutSession.getState().start({ kind: "edit", id }), 80)
+              }}
+            />
           ) : !draft ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center">
               {detailQ.isError || (detailQ.fetchStatus === "paused" && !detailQ.data) ? (
@@ -554,9 +608,15 @@ export function WorkoutPlayer({
               {/* Barra superiore */}
               <header className="border-b px-4 pb-3 pt-[calc(env(safe-area-inset-top)+0.75rem)] sm:pt-4">
                 <div className="flex items-center gap-3">
-                  <DialogPrimitive.Close className="grid size-10 shrink-0 place-items-center rounded-xl text-muted-foreground hover:bg-accent" aria-label="Chiudi (la bozza resta salvata)">
+                  <button
+                    type="button"
+                    onClick={() => (saving ? undefined : draft.id ? onOpenChange(false) : setAsk("close"))}
+                    disabled={saving}
+                    className="grid size-10 shrink-0 place-items-center rounded-xl text-muted-foreground hover:bg-accent"
+                    aria-label={draft.id ? "Chiudi la modifica (resta salvata come bozza)" : "Pausa o annulla l'allenamento"}
+                  >
                     <X className="size-5" />
-                  </DialogPrimitive.Close>
+                  </button>
                   <div className="min-w-0 flex-1">
                     <input
                       value={draft.title}
@@ -571,32 +631,11 @@ export function WorkoutPlayer({
                           <RotateCcw className="size-3" /> {draft.id ? "annulla modifiche" : "ricomincia"}
                         </button>
                       )}
-                      {!draft.id && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            // due tocchi: niente sessioni perse per sbaglio
-                            if (!confirmCancel) {
-                              setConfirmCancel(true)
-                              if (cancelTimer.current) clearTimeout(cancelTimer.current)
-                              cancelTimer.current = setTimeout(() => setConfirmCancel(false), 4000)
-                              return
-                            }
-                            writeDraftRaw(userId, null)
-                            setConfirmCancel(false)
-                            onOpenChange(false)
-                            toast.info("Allenamento annullato")
-                          }}
-                          className={cn("ml-2 inline-flex items-center gap-1", confirmCancel ? "font-semibold text-danger" : "text-muted-foreground hover:text-danger")}
-                        >
-                          <Trash2 className="size-3" /> {confirmCancel ? "tocca di nuovo per annullare" : "annulla"}
-                        </button>
-                      )}
                     </p>
                   </div>
-                  <Button className="rounded-xl" onClick={() => void onFinish()} disabled={saving}>
+                  <Button className="rounded-xl" onClick={requestFinish} disabled={saving}>
                     {saving ? <LoaderCircle className="size-4 animate-spin" /> : <Check className="size-4" />}
-                    Fine
+                    {draft.id ? "Salva" : "Fine"}
                   </Button>
                 </div>
                 <div className="mt-3 h-1 overflow-hidden rounded-full bg-muted">
@@ -814,10 +853,24 @@ export function WorkoutPlayer({
                           >
                             RPE
                           </Button>
+                          {!ex.sets.some((x) => x.done) && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="ml-auto rounded-lg text-xs text-muted-foreground"
+                              title="Macchina occupata? Scegli un esercizio per lo stesso muscolo"
+                              onClick={() => {
+                                setReplacing({ key: ex.key, muscle: ex.primary })
+                                setPicker(true)
+                              }}
+                            >
+                              <Repeat2 className="size-3.5" /> Cambia
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="ml-auto rounded-lg text-xs text-muted-foreground"
+                            className={cn("rounded-lg text-xs text-muted-foreground", ex.sets.some((x) => x.done) && "ml-auto")}
                             onClick={() => update((d) => ({ ...d, exercises: d.exercises.filter((e) => e.key !== ex.key), current: Math.max(0, Math.min(d.current, d.exercises.length - 2)) }))}
                           >
                             <Trash2 className="size-3.5" /> Rimuovi
@@ -864,22 +917,54 @@ export function WorkoutPlayer({
                       Successivo <ChevronRight className="size-4" />
                     </Button>
                   ) : (
-                    <Button className="h-12 flex-1 rounded-xl" onClick={() => void onFinish()} disabled={saving}>
-                      <Check className="size-4" /> Termina allenamento
+                    <Button className="h-12 flex-1 rounded-xl" onClick={requestFinish} disabled={saving}>
+                      <Check className="size-4" /> {draft.id ? "Salva modifiche" : "Termina allenamento"}
                     </Button>
                   )}
                 </div>
               </footer>
+              {ask && (
+                <ConfirmSheet
+                  kind={ask}
+                  done={doneSets}
+                  total={totalSets}
+                  onCancel={() => setAsk(null)}
+                  onFinish={() => {
+                    setAsk(null)
+                    void onFinish()
+                  }}
+                  onPause={() => {
+                    setAsk(null)
+                    onOpenChange(false)
+                  }}
+                  onDiscard={() => {
+                    setAsk(null)
+                    writeDraftRaw(userId, null)
+                    setRest(null)
+                    onOpenChange(false)
+                    toast.info("Allenamento annullato", { description: "Nessuna serie è stata salvata." })
+                  }}
+                />
+              )}
             </>
           )}
-          <ExercisePicker open={picker} onOpenChange={setPicker} onPick={addPicked} />
+          <ExercisePicker
+            open={picker}
+            onOpenChange={(o) => {
+              setPicker(o)
+              if (!o) setReplacing(null)
+            }}
+            onPick={(p) => (replacing ? replacePicked(p, replacing.key) : addPicked(p))}
+            initialMuscle={replacing?.muscle ?? null}
+            title={replacing ? "Sostituisci esercizio" : undefined}
+          />
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>
   )
 }
 
-function ResultScreen({ result, onClose }: { result: Result; onClose: () => void }) {
+function ResultScreen({ result, onClose, onEdit }: { result: Result; onClose: () => void; onEdit: () => void }) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-6 overflow-y-auto p-6 text-center">
       <div className="relative grid size-24 place-items-center rounded-full bg-gain/10 ring-1 ring-gain/30">
@@ -924,9 +1009,88 @@ function ResultScreen({ result, onClose }: { result: Result; onClose: () => void
           ))}
         </ul>
       )}
-      <Button className="h-12 w-full max-w-sm rounded-xl" onClick={onClose}>
-        Chiudi
-      </Button>
+      <div className="w-full max-w-sm space-y-2">
+        <Button className="h-12 w-full rounded-xl" onClick={onClose}>
+          Chiudi
+        </Button>
+        {!result.queued && (
+          <Button variant="ghost" className="w-full rounded-xl text-muted-foreground" onClick={onEdit}>
+            <Pencil className="size-4" /> Hai sbagliato qualcosa? Modifica la sessione
+          </Button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/** Conferma in basso: concludere l'allenamento, oppure metterlo in pausa / annullarlo. */
+function ConfirmSheet({
+  kind,
+  done,
+  total,
+  onCancel,
+  onFinish,
+  onPause,
+  onDiscard,
+}: {
+  kind: "finish" | "close"
+  done: number
+  total: number
+  onCancel: () => void
+  onFinish: () => void
+  onPause: () => void
+  onDiscard: () => void
+}) {
+  const [discard, setDiscard] = useState(false)
+  return (
+    <div className="absolute inset-0 z-10 flex items-end bg-background/70 backdrop-blur-sm sm:items-center sm:justify-center" onClick={onCancel}>
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="confirm-sheet-title"
+        onClick={(e) => e.stopPropagation()}
+        className="animate-sheet-up w-full space-y-3 rounded-t-3xl border-t bg-popover p-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] shadow-2xl sm:max-w-sm sm:rounded-3xl sm:border"
+      >
+        {kind === "finish" ? (
+          <>
+            <h2 id="confirm-sheet-title" className="text-lg font-semibold">
+              🏁 Concludere l&apos;allenamento?
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Hai completato <strong className="text-foreground">{done}</strong> serie su {total}.
+              {done > 0 && done < total && " Verranno salvate solo le serie spuntate."}
+            </p>
+            <Button className="h-12 w-full rounded-xl" onClick={onFinish}>
+              <Check className="size-4" /> Salva e termina
+            </Button>
+            <Button variant="outline" className="h-12 w-full rounded-xl" onClick={onCancel} autoFocus>
+              Continua ad allenarmi
+            </Button>
+          </>
+        ) : (
+          <>
+            <h2 id="confirm-sheet-title" className="text-lg font-semibold">
+              Uscire dall&apos;allenamento?
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {done > 0 ? `Hai già ${done} serie registrate.` : "Non hai ancora registrato serie."}
+            </p>
+            <Button className="h-12 w-full rounded-xl" onClick={onCancel} autoFocus>
+              Torna all&apos;allenamento
+            </Button>
+            <Button variant="outline" className="h-12 w-full rounded-xl" onClick={onPause}>
+              <Pause className="size-4" /> Metti in pausa (riprendi dopo)
+            </Button>
+            <Button
+              variant="ghost"
+              className={cn("h-12 w-full rounded-xl text-danger hover:bg-danger/10 hover:text-danger", discard && "bg-danger/10")}
+              onClick={() => (discard ? onDiscard() : setDiscard(true))}
+            >
+              <Trash2 className="size-4" /> {discard ? "Sicuro? Tocca per eliminare tutto" : "Annulla allenamento"}
+            </Button>
+          </>
+        )}
+      </div>
     </div>
   )
 }

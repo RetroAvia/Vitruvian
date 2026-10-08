@@ -1,8 +1,11 @@
 "use client"
 
-import { BedDouble, CheckCircle2, ChevronDown, Dumbbell, Play, Repeat2, Sparkles } from "lucide-react"
+import { BedDouble, CheckCircle2, ChevronDown, Dumbbell, Play, Repeat2, Sparkles, Trash2 } from "lucide-react"
+import { useState } from "react"
+import { toast } from "sonner"
 
 import { useSessionUser } from "@/components/layout/session-user-context"
+import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { relativeDay } from "@/lib/format"
@@ -11,6 +14,7 @@ import { cn } from "@/lib/utils"
 
 import { estimateMinutes } from "../engine/analysis"
 import { useTraining } from "../hooks/use-training"
+import { writeDraftRaw } from "./storage"
 import { useLocalWorkoutState, useWorkoutSession, type WorkoutRequest } from "./workout-session"
 
 /**
@@ -23,10 +27,12 @@ export function QuickWorkoutCard({ className }: { className?: string }) {
   const playerOpen = useWorkoutSession((s) => s.open)
   const { draft } = useLocalWorkoutState(user.id, playerOpen)
   const { report, workouts } = useTraining()
+  const [confirmDiscard, setConfirmDiscard] = useState(false)
 
   const t = report?.today
   const tree = report?.tree ?? null
-  const target = t ? (t.doneToday ? null : t.rest ? t.next : t.day) : null
+  // progressivo: dopo la seduta di oggi propone già la successiva della scheda
+  const target = t ? (t.doneToday ? t.next : t.rest ? t.next : t.day) : null
   const lastWorkout = workouts[0] ?? null
 
   const go = (req?: WorkoutRequest) => {
@@ -34,11 +40,11 @@ export function QuickWorkoutCard({ className }: { className?: string }) {
     start(req)
   }
 
-  const title = draft ? draft.title : target ? target.label : t?.doneToday ? `${t.doneToday.title} completato` : "Sessione libera"
+  const title = draft ? draft.title : target ? (t?.doneToday ? `Prossimo: ${target.label}` : target.label) : t?.doneToday ? `${t.doneToday.title} completato` : "Sessione libera"
   const detail = draft
     ? `In corso · ${draft.done}/${draft.total} serie`
     : target
-      ? `${t?.rest ? "Oggi è riposo · prossimo giorno · " : ""}${target.exercises.length} esercizi · circa ${estimateMinutes(target)} min`
+      ? `${t?.doneToday ? `✅ Oggi: ${t.doneToday.title} · ` : t?.rest ? "Oggi è riposo · prossimo giorno · " : ""}${target.exercises.length} esercizi · circa ${estimateMinutes(target)} min`
       : t?.doneToday
         ? `${t.doneToday.total_sets} serie registrate oggi`
         : tree
@@ -58,18 +64,31 @@ export function QuickWorkoutCard({ className }: { className?: string }) {
         <p className="truncate text-xs text-muted-foreground">{detail}</p>
       </div>
       <div className="relative flex shrink-0 items-center">
-        <Button className="h-11 rounded-xl rounded-r-none px-4 shadow-[0_6px_20px_-8px_var(--neon)]" onClick={() => go(draft || target ? { kind: "today" } : { kind: "day", day: null })}>
+        <Button className="h-11 rounded-xl rounded-r-none px-4 shadow-[0_6px_20px_-8px_var(--neon)]" onClick={() => go(draft ? { kind: "today" } : target ? { kind: "day", day: target } : { kind: "day", day: null })}>
           <Play className="size-4" />
           <span className="hidden sm:inline">{draft ? "Riprendi" : "Inizia"}</span>
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button className="h-11 rounded-xl rounded-l-none border-l border-background/30 px-2" aria-label="Altre opzioni di allenamento" disabled={Boolean(draft)}>
+            <Button className="h-11 rounded-xl rounded-l-none border-l border-background/30 px-2" aria-label="Altre opzioni di allenamento">
               <ChevronDown className="size-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-64">
-            {tree && tree.days.length > 0 && (
+            {draft && (
+              <>
+                <DropdownMenuItem onSelect={() => go({ kind: "today" })}>
+                  <Play className="size-4" /> Riprendi “{draft.title}”
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="text-danger focus:text-danger"
+                  onSelect={() => setConfirmDiscard(true)}
+                >
+                  <Trash2 className="size-4" /> Annulla allenamento in corso
+                </DropdownMenuItem>
+              </>
+            )}
+            {!draft && tree && tree.days.length > 0 && (
               <>
                 <DropdownMenuLabel>{tree.plan.name}</DropdownMenuLabel>
                 {tree.days.map((d) => (
@@ -82,19 +101,33 @@ export function QuickWorkoutCard({ className }: { className?: string }) {
                 <DropdownMenuSeparator />
               </>
             )}
-            {lastWorkout && (
+            {!draft && lastWorkout && (
               <DropdownMenuItem onSelect={() => go({ kind: "repeat", id: lastWorkout.id, title: lastWorkout.title })}>
                 <Repeat2 className="size-4" />
                 <span className="min-w-0 flex-1 truncate">Ripeti “{lastWorkout.title}”</span>
                 <span className="text-[11px] text-muted-foreground">{relativeDay(lastWorkout.workout_date)}</span>
               </DropdownMenuItem>
             )}
-            <DropdownMenuItem onSelect={() => go({ kind: "day", day: null })}>
-              <Sparkles className="size-4" /> Sessione libera
-            </DropdownMenuItem>
+            {!draft && (
+              <DropdownMenuItem onSelect={() => go({ kind: "day", day: null })}>
+                <Sparkles className="size-4" /> Sessione libera
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+      <ConfirmDialog
+        open={confirmDiscard}
+        onOpenChange={setConfirmDiscard}
+        title={`Annullare “${draft?.title ?? "allenamento"}”?`}
+        description="Le serie registrate in questa sessione andranno perse."
+        confirmLabel="Annulla allenamento"
+        onConfirm={() => {
+          writeDraftRaw(user.id, null)
+          setConfirmDiscard(false)
+          toast.info("Allenamento annullato")
+        }}
+      />
     </div>
   )
 }

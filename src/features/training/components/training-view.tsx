@@ -28,6 +28,7 @@ import { PlanCard } from "./plan-card"
 import { emptyPlan, fromPayload, fromTree, PlanEditor, type EPlan } from "./plan-editor"
 import { ProgressCard } from "./progress-card"
 import { TodayPanel } from "./today-panel"
+import { WeeklySummaryCard } from "./weekly-card"
 import { TrainingTools } from "./training-tools"
 import { VolumeCard } from "./volume-card"
 
@@ -167,7 +168,10 @@ export function TrainingView() {
               }
             />
           ) : (
-            <TodayPanel report={report} workouts={workouts} draft={Boolean(draft)} onStart={start} onEdit={edit} onRepeat={repeat} onShowHistory={() => selectTab("history")} onShowAnalysis={() => selectTab("analysis")} />
+            <>
+              <TodayPanel report={report} workouts={workouts} draft={Boolean(draft)} onStart={start} onEdit={edit} onRepeat={repeat} onShowHistory={() => selectTab("history")} onShowAnalysis={() => selectTab("analysis")} />
+              <WeeklySummaryCard />
+            </>
           )}
         </div>
       )}

@@ -60,6 +60,12 @@ export function TodayPanel({
               <p className="mt-1 text-sm text-muted-foreground">
                 {t.doneToday.total_sets} serie{t.doneToday.duration_min ? ` in ${t.doneToday.duration_min} minuti` : ""}. Ora recupero: proteine, sonno, idratazione.
               </p>
+              {t.next && t.next.id !== t.doneToday.plan_day_id && (
+                <p className="mt-2 text-sm">
+                  ⏭️ Prossima seduta: <strong>{t.next.label}</strong>
+                  <span className="text-muted-foreground"> · {t.next.exercises.length} esercizi</span>
+                </p>
+              )}
               <div className="mt-4 flex flex-wrap gap-2">
                 <Button variant="outline" size="sm" className="rounded-lg" onClick={() => t.doneToday && onEdit(t.doneToday)}>
                   <Pencil className="size-3.5" /> Modifica

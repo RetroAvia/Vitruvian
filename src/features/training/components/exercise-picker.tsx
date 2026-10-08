@@ -1,7 +1,7 @@
 "use client"
 
 import { Plus, Search } from "lucide-react"
-import { useDeferredValue, useMemo, useState } from "react"
+import { useDeferredValue, useEffect, useMemo, useState } from "react"
 
 import { MuscleFigure } from "@/components/body/muscle-figure"
 import { Button } from "@/components/ui/button"
@@ -29,9 +29,25 @@ const norm = (s: string) =>
     .replace(/[̀-ͯ]/g, "")
 
 /** Ricerca nel catalogo per nome o muscolo; possibilità di creare un esercizio personale. */
-export function ExercisePicker({ open, onOpenChange, onPick }: { open: boolean; onOpenChange: (o: boolean) => void; onPick: (e: PickedExercise) => void }) {
+export function ExercisePicker({
+  open,
+  onOpenChange,
+  onPick,
+  initialMuscle = null,
+  title,
+}: {
+  open: boolean
+  onOpenChange: (o: boolean) => void
+  onPick: (e: PickedExercise) => void
+  /** filtro iniziale (sostituzione: stesso muscolo) */
+  initialMuscle?: Muscle | null
+  title?: string
+}) {
   const [q, setQ] = useState("")
   const [muscle, setMuscle] = useState<Muscle | "all" | "cardio">("all")
+  useEffect(() => {
+    if (open) setMuscle(initialMuscle ?? "all")
+  }, [open, initialMuscle])
   const [custom, setCustom] = useState<{ name: string; primary: Muscle; pattern: Pattern } | null>(null)
   const dq = useDeferredValue(q)
 
@@ -55,8 +71,8 @@ export function ExercisePicker({ open, onOpenChange, onPick }: { open: boolean; 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[90dvh] flex-col gap-3 sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Aggiungi esercizio</DialogTitle>
-          <DialogDescription>Cerca per nome o filtra per muscolo.</DialogDescription>
+          <DialogTitle>{title ?? "Aggiungi esercizio"}</DialogTitle>
+          <DialogDescription>{title ? "Alternative per lo stesso muscolo: serie e recuperi restano quelli della scheda." : "Cerca per nome o filtra per muscolo."}</DialogDescription>
         </DialogHeader>
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />

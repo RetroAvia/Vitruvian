@@ -6,6 +6,7 @@
  */
 import { ACTIVITY_LEVELS, MEAL_SLOT_LABELS, MEDICAL_KIND_LABELS, MEDICAL_OUTCOME_LABELS } from "@/config/constants"
 import type { AdviceInput } from "@/features/advice/engine/advice"
+import { formatMetric, HEALTH_METRICS } from "@/features/health/engine/health"
 import { mealText } from "@/features/nutrition/engine/meal-text"
 import { mealTotals } from "@/features/nutrition/engine/totals"
 import type { DayWithMeals } from "@/features/nutrition/types"
@@ -77,6 +78,14 @@ export function buildSnapshot(input: AdviceInput, diet: DayWithMeals[] | null, s
     for (const f of input.forecasts) {
       out.push(`- Tendenza ${f.label.toLowerCase()}: ${f.direction === "reached" ? "obiettivo raggiunto" : f.direction === "toward" ? "verso l'obiettivo" : f.direction === "away" ? "si allontana dall'obiettivo" : "stabile"} (${formatNumber(f.perMonth, 2)} ${f.unit}/mese)`)
     }
+  }
+
+  const hs = input.health
+  if (sections.body && hs) {
+    const parts = (["steps", "sleep_min", "resting_hr", "active_kcal", "hrv_ms"] as const)
+      .filter((m) => hs[m].avg7 !== null)
+      .map((m) => `${HEALTH_METRICS[m].label.toLowerCase()} ${formatMetric(m, hs[m].avg7)}`)
+    if (parts.length) out.push("", "## ATTIVITÀ QUOTIDIANA (Apple Salute, media ultimi 7 giorni)", `- ${parts.join(" · ")}`)
   }
 
   if (sections.labs && input.labs) {

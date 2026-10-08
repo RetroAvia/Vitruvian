@@ -166,6 +166,9 @@ export const BARBELL_EXERCISES = new Set([
   "barbell_row",
   "hip_thrust",
   "good_morning",
+  "pendlay_row",
+  "sumo_deadlift",
+  "rack_pull",
 ])
 
 const PLATES = [25, 20, 15, 10, 5, 2.5, 1.25]

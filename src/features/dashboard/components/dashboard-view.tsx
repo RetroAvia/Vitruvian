@@ -12,6 +12,8 @@ import { SectionHeader } from "@/components/shared/section-header"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useBiometricReport } from "@/features/biometrics/hooks/use-biometric-report"
+import { ActivityCard } from "@/features/health/components/activity-card"
+import { WeeklySummaryCard } from "@/features/training/components/weekly-card"
 import { QuickWorkoutCard } from "@/features/training/session/quick-workout"
 import { formatDate } from "@/lib/format"
 
@@ -134,6 +136,10 @@ export function DashboardView() {
             description="Indice di salute, le azioni più utili adesso e cosa c'è in programma oggi."
           />
           <TodayCard />
+          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+            <ActivityCard />
+            <WeeklySummaryCard />
+          </div>
         </section>
 
         <section aria-labelledby="sec-kpi">

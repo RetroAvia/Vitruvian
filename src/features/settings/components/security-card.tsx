@@ -267,7 +267,7 @@ export function SecurityCard() {
   )
 }
 
-function Row({ icon: Icon, title, desc, children }: { icon: typeof Timer; title: string; desc: string; children: React.ReactNode }) {
+export function Row({ icon: Icon, title, desc, children }: { icon: typeof Timer; title: string; desc: string; children: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-4">
       <div className="flex min-w-0 gap-3">
@@ -282,7 +282,7 @@ function Row({ icon: Icon, title, desc, children }: { icon: typeof Timer; title:
   )
 }
 
-function Toggle({ on, onChange, label }: { on: boolean; onChange: (v: boolean) => void; label: string }) {
+export function Toggle({ on, onChange, label }: { on: boolean; onChange: (v: boolean) => void; label: string }) {
   return (
     <button
       type="button"
