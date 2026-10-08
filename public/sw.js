@@ -8,8 +8,10 @@
  *    dell'app e le sessioni concluse offline vengono inviate al ritorno della rete.
  *  - Supabase e le API non passano di qui: nessun dato sanitario nella cache del SW.
  *  - Al logout la pagina chiede di svuotare la cache delle pagine ("clear").
+ *  - Notifiche del recupero: "push" dal server a fine recupero, "rest-show" dalla
+ *    pagina quando blocchi il telefono (esercizio, serie, ora di fine).
  */
-const VERSION = "v1"
+const VERSION = "v2"
 const STATIC = `vt-static-${VERSION}`
 const PAGES = `vt-pages-${VERSION}`
 const ASSETS = `vt-assets-${VERSION}`
@@ -166,5 +168,57 @@ self.addEventListener("fetch", (event) => {
   }
   if (url.pathname.startsWith("/icons/") || /\.(?:png|svg|ico|webp|woff2?)$/.test(url.pathname) || url.pathname === "/manifest.webmanifest") {
     event.respondWith(staleWhileRevalidate(request, event))
+  }
+})
+
+/* ------------------------------- Notifiche -------------------------------- */
+
+const ICON = "/icons/icon-192.png"
+
+function showRest(data) {
+  return self.registration.showNotification(data.title || "Vitruvian", {
+    body: data.body || "",
+    tag: data.tag || "vt-rest",
+    renotify: true,
+    icon: ICON,
+    badge: ICON,
+    silent: Boolean(data.silent),
+    requireInteraction: false,
+    vibrate: data.silent ? undefined : [250, 120, 250, 120, 400],
+    data: { url: data.url || "/training" },
+  })
+}
+
+self.addEventListener("push", (event) => {
+  let data = {}
+  try {
+    data = event.data ? event.data.json() : {}
+  } catch {
+    data = { title: "Vitruvian", body: event.data ? event.data.text() : "" }
+  }
+  event.waitUntil(showRest(data))
+})
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close()
+  const target = new URL((event.notification.data && event.notification.data.url) || "/training", self.location.origin).href
+  event.waitUntil(
+    (async () => {
+      const all = await self.clients.matchAll({ type: "window", includeUncontrolled: true })
+      // app già aperta (il registro è lì): basta riportarla in primo piano
+      const open = all.find((c) => new URL(c.url).origin === self.location.origin)
+      if (open) return open.focus()
+      return self.clients.openWindow(target)
+    })(),
+  )
+})
+
+self.addEventListener("message", (event) => {
+  const data = event.data || {}
+  if (data.type === "rest-show") event.waitUntil(showRest({ ...data.notification, silent: true }))
+  else if (data.type === "rest-clear") {
+    event.waitUntil(
+      self.registration.getNotifications({ tag: "vt-rest" }).then((list) => list.forEach((n) => n.close())),
+    )
   }
 })

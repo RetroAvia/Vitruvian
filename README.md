@@ -167,6 +167,17 @@ Nessuna migrazione. **AI Bridge → Dieta**: prompt → risposta dell'IA → ant
 4. **Emoji** per riconoscere a colpo d'occhio alimenti (🍝 🍗 🥦 🍎…), pasti (☕ colazione, 🍝 pranzo…), esercizi per muscolo (🦵 💪 🦅 🍑 🏃…), integratori e le voci di "Oggi" in dashboard.
 5. Scheda, dieta o sessione eliminate non generano più errori di caricamento nelle altre schermate.
 
+## Aggiornamento 9 — Palestra, notifiche e Apple Salute
+1. SQL Editor → esegui `supabase/migrations/20261016000001_push_health.sql`.
+2. **Notifiche del recupero** (schermata di blocco): le chiavi VAPID sono già in `.env.local`. Su Vercel aggiungi in *Settings → Environment Variables* `NEXT_PUBLIC_VAPID_PUBLIC_KEY` e `VAPID_PRIVATE_KEY` (copiale da `.env.local`; la privata non va mai nel codice) e rifai il deploy. Sull'iPhone: apri l'app dall'icona sulla Home → Impostazioni → *Avvisi del recupero* → *Attiva su questo dispositivo* → *Invia una prova*.
+   - Bloccando il telefono durante il recupero: notifica con esercizio, serie fatte, prossima serie e ora di fine; allo scadere notifica con suono/vibrazione. Tocchi e torni al registro. Recuperi da 10 s a 4 min e mezzo (limite delle funzioni Vercel).
+3. **Bip di fine recupero** più forte, con conto alla rovescia negli ultimi 3 secondi (impostazione separata dai suoni dell'interfaccia).
+4. **Registro più sicuro**: "Fine" chiede conferma (con serie fatte/totali); la X apre *Torna all'allenamento / Metti in pausa / Annulla allenamento*; dopo il salvataggio c'è *Modifica la sessione*. Dalla dashboard puoi annullare un allenamento in corso.
+5. **Allenamento rapido progressivo**: finito il giorno 2, la dashboard propone già il giorno 3.
+6. **Catalogo esercizi**: da 85 a 163 esercizi (Smith, macchine, cavi, varianti per glutei e femorali, core, cardio). Nel registro *Cambia* sostituisce un esercizio non iniziato con un'alternativa per lo stesso muscolo (macchina occupata), mantenendo serie e recuperi.
+7. **Apple Salute / Mi Band**: Impostazioni → *Apple Salute e Mi Band* → codice personale + guida al Comando Rapido (passi, sonno, battiti a riposo, calorie attive, HRV, peso). Mi Band: Mi Fitness → Apple Salute. Dashboard con *Attività e recupero*, consigli su sonno, passi e battiti a riposo, dati inclusi nel prompt del Coach AI.
+8. **La tua settimana**: sessioni, serie, tonnellate e minuti contro la settimana scorsa, giorni allenati, muscoli più allenati e record (dashboard e Allenamento).
+
 ---
 
 ## Convenzioni
