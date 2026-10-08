@@ -808,6 +808,117 @@ export type Database = {
         }
         Relationships: []
       }
+      push_subscriptions: {
+        Row: {
+          id: string
+          user_id: string
+          endpoint: string
+          p256dh: string
+          auth: string
+          device: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id?: string
+          endpoint: string
+          p256dh: string
+          auth: string
+          device?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          endpoint?: string
+          p256dh?: string
+          auth?: string
+          device?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      rest_timers: {
+        Row: {
+          id: string
+          user_id: string
+          fire_at: string
+          created_at: string
+        }
+        Insert: {
+          id: string
+          user_id?: string
+          fire_at: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          fire_at?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      health_daily: {
+        Row: {
+          user_id: string
+          day: string
+          steps: number | null
+          active_kcal: number | null
+          resting_hr: number | null
+          hrv_ms: number | null
+          sleep_min: number | null
+          weight_kg: number | null
+          source: string
+          updated_at: string
+        }
+        Insert: {
+          user_id?: string
+          day: string
+          steps?: number | null
+          active_kcal?: number | null
+          resting_hr?: number | null
+          hrv_ms?: number | null
+          sleep_min?: number | null
+          weight_kg?: number | null
+          source?: string
+          updated_at?: string
+        }
+        Update: {
+          user_id?: string
+          day?: string
+          steps?: number | null
+          active_kcal?: number | null
+          resting_hr?: number | null
+          hrv_ms?: number | null
+          sleep_min?: number | null
+          weight_kg?: number | null
+          source?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      health_tokens: {
+        Row: {
+          user_id: string
+          token_hash: string
+          created_at: string
+          last_used_at: string | null
+        }
+        Insert: {
+          user_id?: string
+          token_hash: string
+          created_at?: string
+          last_used_at?: string | null
+        }
+        Update: {
+          user_id?: string
+          token_hash?: string
+          created_at?: string
+          last_used_at?: string | null
+        }
+        Relationships: []
+      }
       supplement_logs: {
         Row: {
           id: string
@@ -1182,6 +1293,27 @@ export type Database = {
       }
       import_training: {
         Args: { p: Json }
+        Returns: Json
+      }
+      consume_rest_timer: {
+        Args: { p_id: string }
+        Returns: boolean
+      }
+      drop_push_subscription: {
+        Args: { p_endpoint: string }
+        Returns: undefined
+      }
+      ingest_health: {
+        Args: {
+          p_token: string
+          p_date?: string | null
+          p_steps?: string | null
+          p_active_kcal?: string | null
+          p_resting_hr?: string | null
+          p_hrv?: string | null
+          p_sleep_hours?: string | null
+          p_weight_kg?: string | null
+        }
         Returns: Json
       }
       save_workout: {

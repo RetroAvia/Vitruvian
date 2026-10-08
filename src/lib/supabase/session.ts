@@ -12,7 +12,7 @@ import type { Database } from "@/types/database.types"
 
 const PUBLIC_PATHS = ["/login", "/manifest.webmanifest"]
 /** Endpoint senza sessione utente, protetti da un proprio segreto (es. cron). */
-const OPEN_API = ["/api/keepalive"]
+const OPEN_API = ["/api/keepalive", "/api/health", "/api/push/rest"]
 
 function isPublic(pathname: string) {
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))

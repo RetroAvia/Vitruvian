@@ -8,7 +8,7 @@ import { useCallback } from "react"
 
 import { useUiStore } from "@/stores/ui-store"
 
-export type SoundName = "tap" | "check" | "uncheck" | "success" | "error" | "celebrate"
+export type SoundName = "tap" | "check" | "uncheck" | "success" | "error" | "celebrate" | "restTick" | "restEnd"
 
 let ctx: AudioContext | null = null
 
@@ -53,6 +53,42 @@ const RECIPES: Record<SoundName, (ac: AudioContext, t: number) => void> = {
   celebrate: (ac, t) => {
     ;[523.25, 659.25, 783.99, 1046.5].forEach((f, i) => tone(ac, f, t + i * 0.09, 0.3, 0.04))
   },
+  // avvisi del recupero: più forti, si devono sentire in palestra
+  restTick: (ac, t) => tone(ac, 880, t, 0.12, 0.18, "triangle"),
+  restEnd: (ac, t) => {
+    tone(ac, 988, t, 0.18, 0.3, "triangle")
+    tone(ac, 988, t + 0.24, 0.18, 0.3, "triangle")
+    tone(ac, 1318.5, t + 0.48, 0.45, 0.32, "triangle")
+  },
+}
+
+/**
+ * Su iPhone l'audio parte solo dopo un tocco: al primo tocco prepariamo il
+ * contesto, così l'avviso di fine recupero suona anche se arriva da solo.
+ * Al ritorno nell'app (schermo riacceso) lo riattiviamo.
+ */
+if (typeof window !== "undefined") {
+  // touchend/click sono i gesti che iOS accetta per avviare l'audio; restano sempre attivi
+  // perché dopo il blocco schermo iOS sospende l'audio e serve un nuovo tocco
+  const unlock = () => {
+    if (!ctx || ctx.state !== "running") audio()
+  }
+  for (const ev of ["touchend", "click", "keydown"]) window.addEventListener(ev, unlock, { capture: true, passive: true })
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && ctx && ctx.state !== "running") void ctx.resume().catch(() => undefined)
+  })
+}
+
+/** Avvisi del timer di recupero: indipendenti dai suoni d'interfaccia (impostazione dedicata). */
+export function playAlert(name: "restTick" | "restEnd") {
+  if (!useUiStore.getState().restSound) return
+  const ac = audio()
+  if (!ac) return
+  try {
+    RECIPES[name](ac, ac.currentTime + 0.005)
+  } catch {
+    /* audio non disponibile */
+  }
 }
 
 export function playSound(name: SoundName) {

@@ -26,6 +26,8 @@ interface UiState {
   showDeltas: boolean
   /** Suoni d'interfaccia */
   soundEnabled: boolean
+  /** Bip a fine recupero (e negli ultimi 3 secondi) */
+  restSound: boolean
   /** Disconnessione automatica dopo N minuti di inattività (0 = mai) */
   idleLogoutMinutes: number
   /** Copia locale dei dati per l'avvio istantaneo */
@@ -37,6 +39,7 @@ interface UiState {
   toggleCheckupColumn: (group: CheckupColumnGroup) => void
   setShowDeltas: (value: boolean) => void
   setSoundEnabled: (value: boolean) => void
+  setRestSound: (value: boolean) => void
   setIdleLogoutMinutes: (value: number) => void
   setOfflineCache: (value: boolean) => void
   dismissAdvice: (id: string, date: string) => void
@@ -52,6 +55,7 @@ export const useUiStore = create<UiState>()(
       checkupColumns: ["bia", "circ"],
       showDeltas: true,
       soundEnabled: true,
+      restSound: true,
       idleLogoutMinutes: 0,
       offlineCache: true,
       dismissedAdvice: {},
@@ -65,6 +69,7 @@ export const useUiStore = create<UiState>()(
         })),
       setShowDeltas: (showDeltas) => set({ showDeltas }),
       setSoundEnabled: (soundEnabled) => set({ soundEnabled }),
+      setRestSound: (restSound) => set({ restSound }),
       setIdleLogoutMinutes: (idleLogoutMinutes) => set({ idleLogoutMinutes }),
       setOfflineCache: (offlineCache) => set({ offlineCache }),
       dismissAdvice: (id, date) => set((s) => ({ dismissedAdvice: { ...s.dismissedAdvice, [id]: date } })),

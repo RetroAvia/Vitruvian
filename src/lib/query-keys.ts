@@ -26,6 +26,10 @@ export const queryKeys = {
     recent: ["training", "recent"] as const,
     detail: (id: string) => ["training", "detail", id] as const,
   },
+  health: {
+    days: ["health", "days"] as const,
+    link: ["health", "link"] as const,
+  },
   diet: {
     plans: ["diet", "plans"] as const,
     tree: (id: string) => ["diet", "tree", id] as const,
