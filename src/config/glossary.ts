@@ -5,7 +5,7 @@ export const GLOSSARY = {
   fat_kg: "Massa grassa in kg = peso × percentuale di massa grassa.",
   ffm: "Fat-Free Mass: tutto ciò che non è grasso (muscoli, organi, ossa, acqua). Calcolata come peso − massa grassa.",
   lean_ref: "Il valore di \"massa magra\" scritto sul referto: ogni strumento lo definisce in modo diverso.",
-  ffmi: "Fat-Free Mass Index: massa magra ÷ altezza². Misura lo sviluppo muscolare indipendentemente dal grasso (uomo: 18–20 nella media, oltre 22 eccellente).",
+  ffmi: "Fat-Free Mass Index: massa magra ÷ altezza². Misura lo sviluppo muscolare indipendentemente dal grasso (uomo: 18–20 nella media, oltre 22 eccellente; donna: 15–17 nella media, oltre 19 eccellente).",
   bmr: "Metabolismo basale: le calorie che consumi a riposo assoluto in 24 ore.",
   tdee: "Total Daily Energy Expenditure: calorie consumate in una giornata tipo = metabolismo basale × livello di attività.",
   whtr: "Rapporto vita/altezza: sotto 0,50 il rischio cardiometabolico è basso. Semplice e più predittivo del BMI.",

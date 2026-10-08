@@ -14,7 +14,7 @@ export function LogoMark({ className }: { className?: string }) {
       <rect x="9" y="9" width="22" height="22" rx="2" fill="none" stroke="url(#vt-g)" strokeWidth="2" />
       <circle cx="20" cy="20" r="13" fill="none" stroke="url(#vt-g)" strokeWidth="2" opacity="0.75" />
       <path d="M20 7v26M7 20h26" stroke="url(#vt-g)" strokeWidth="1.25" opacity="0.45" />
-      <circle cx="20" cy="20" r="2.5" fill="var(--neon)" className="animate-pulse-glow" />
+      <circle cx="20" cy="20" r="2.5" fill="var(--neon)" className="motion-safe:lg:animate-pulse-glow" />
     </svg>
   )
 }

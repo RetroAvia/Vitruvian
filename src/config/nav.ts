@@ -1,12 +1,15 @@
 import {
   Activity,
+  Bot,
   ClipboardList,
+  Dumbbell,
   HeartPulse,
   Lightbulb,
   Pill,
   FileText,
   FlaskConical,
   LayoutDashboard,
+  PersonStanding,
   Salad,
   Settings,
   Sparkles,
@@ -30,6 +33,13 @@ export const NAV = {
     description: "Sintesi, indicatori e andamento",
     icon: LayoutDashboard,
   },
+  body: {
+    href: "/body",
+    label: "Mappa corporea",
+    short: "Corpo",
+    description: "Il tuo corpo in un colpo d'occhio: misure, muscoli, cuore e analisi",
+    icon: PersonStanding,
+  },
   checkups: {
     href: "/checkups",
     label: "Visite",
@@ -43,6 +53,13 @@ export const NAV = {
     short: "Trend",
     description: "Circonferenze, indici e ricomposizione nel tempo",
     icon: Activity,
+  },
+  training: {
+    href: "/training",
+    label: "Allenamento",
+    short: "Allena",
+    description: "Scheda, registro delle sessioni, progressi e punti da migliorare",
+    icon: Dumbbell,
   },
   labs: {
     href: "/labs",
@@ -79,6 +96,13 @@ export const NAV = {
     description: "Piano alimentare, checklist e fabbisogno",
     icon: Salad,
   },
+  coach: {
+    href: "/coach",
+    label: "Coach AI",
+    short: "Coach",
+    description: "Scheda e dieta su misura create da un'IA con tutti i tuoi dati",
+    icon: Bot,
+  },
   bridge: {
     href: "/bridge",
     label: "AI Bridge",
@@ -103,14 +127,14 @@ export const NAV = {
 } satisfies Record<string, NavItem>
 
 export const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
-  { label: "Corpo", items: [NAV.dashboard, NAV.checkups, NAV.trends] },
+  { label: "Corpo", items: [NAV.dashboard, NAV.body, NAV.checkups, NAV.trends, NAV.training] },
   { label: "Salute", items: [NAV.labs, NAV.reports, NAV.supplements] },
   { label: "Alimentazione", items: [NAV.nutrition] },
-  { label: "Strumenti", items: [NAV.advice, NAV.bridge, NAV.report] },
+  { label: "Strumenti", items: [NAV.advice, NAV.coach, NAV.bridge, NAV.report] },
 ]
 
 /** Barra inferiore su smartphone: 4 voci + "Altro" (foglio con tutte le sezioni). */
-export const MOBILE_NAV: NavItem[] = [NAV.dashboard, NAV.checkups, NAV.advice, NAV.nutrition]
+export const MOBILE_NAV: NavItem[] = [NAV.dashboard, NAV.training, NAV.nutrition, NAV.advice]
 
 export const SETTINGS_ITEM = NAV.settings
 export const ALL_NAV_ITEMS: NavItem[] = Object.values(NAV)

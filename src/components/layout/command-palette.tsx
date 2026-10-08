@@ -3,6 +3,7 @@
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 import {
   CornerDownLeft,
+  Dumbbell,
   FileDown,
   FlaskConical,
   HeartPulse,
@@ -20,6 +21,7 @@ import { useRouter } from "next/navigation"
 import { useEffect, useMemo, useRef, useState } from "react"
 
 import { ALL_NAV_ITEMS } from "@/config/nav"
+import { useWorkoutSession } from "@/features/training/session/workout-session"
 import { playSound } from "@/lib/sound"
 import { cn } from "@/lib/utils"
 import { useUiStore } from "@/stores/ui-store"
@@ -78,6 +80,8 @@ export function CommandPalette() {
     return [
       ...ALL_NAV_ITEMS.map((n) => ({ id: n.href, label: n.label, hint: n.description, group: "Vai a" as const, icon: n.icon, run: go(n.href) })),
       { id: "new-visit", label: "Nuova visita", hint: "Inserisci peso, BIA e circonferenze", group: "Azioni", icon: Plus, keywords: "aggiungi misura bia", run: go("/checkups?new=1") },
+      { id: "log-workout", label: "Registra allenamento", hint: "Apre il registro con la seduta di oggi", group: "Azioni", icon: Dumbbell, keywords: "palestra sessione serie pesi", run: () => useWorkoutSession.getState().start({ kind: "today" }) },
+      { id: "imp-training", label: "Importa scheda di allenamento", group: "Azioni", icon: Dumbbell, keywords: "ai palestra diario", run: go("/bridge?tab=training") },
       { id: "imp-labs", label: "Importa analisi del sangue", group: "Azioni", icon: FlaskConical, keywords: "ai referto laboratorio", run: go("/bridge?tab=labs") },
       { id: "imp-med", label: "Importa referto medico", hint: "ECG, visita sportiva, pressione…", group: "Azioni", icon: HeartPulse, keywords: "ecg elettrocardiogramma ai", run: go("/bridge?tab=medical") },
       { id: "imp-sup", label: "Importa integratori", group: "Azioni", icon: Pill, keywords: "ai etichetta", run: go("/bridge?tab=supplements") },

@@ -34,7 +34,7 @@ export function UserMenu() {
   const queryClient = useQueryClient()
 
   async function signOut() {
-    const { error } = await createClient().auth.signOut()
+    const { error } = await createClient().auth.signOut({ scope: "local" })
     if (error) {
       toast.error("Logout non riuscito", { description: error.message })
       return
