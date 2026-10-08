@@ -4,6 +4,8 @@ import { useMemo } from "react"
 
 import { dataQuality, forecastGoals } from "@/features/biometrics/engine/forecast"
 import { useBiometricReport } from "@/features/biometrics/hooks/use-biometric-report"
+import { useHealthDays } from "@/features/health/api/health"
+import { summarizeHealth } from "@/features/health/engine/health"
 import { useLabResults } from "@/features/labs/api/labs"
 import { analyzeLabs } from "@/features/labs/engine/report"
 import { useMedicalReports } from "@/features/medical/api/medical"
@@ -34,6 +36,7 @@ export function useHealthContext() {
   const from = useMemo(() => shiftISO(todayISO(), -30), [])
   const logsQ = useMealLogs(from)
   const training = useTraining()
+  const healthQ = useHealthDays()
 
   const isPending =
     bioPending || training.isPending || labsQ.isPending || medQ.isPending || supQ.isPending || plansQ.isPending || (Boolean(activePlan) && treeQ.isPending)
@@ -74,9 +77,10 @@ export function useHealthContext() {
       supTotals,
       medical,
       training: training.report,
+      health: summarizeHealth(healthQ.data ?? [], today),
     }
     return { input, advice: buildAdvice(input), score: healthScore(input) }
-  }, [isPending, profile, report, labsQ.data, medQ.data, supQ.data, activePlan, treeQ.data, logsQ.data, training.report])
+  }, [isPending, profile, report, labsQ.data, medQ.data, supQ.data, activePlan, treeQ.data, logsQ.data, training.report, healthQ.data])
 
   return { ...result, isPending }
 }

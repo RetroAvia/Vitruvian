@@ -9,6 +9,7 @@
  * Fonti principali: linee guida CREA 2018 (porzioni settimanali), ISSN 2017
  * (proteine), ESC/EAS 2019 e ESC 2024 (lipidi e pressione), EFSA (UL).
  */
+import { formatMetric, type HealthMetric, type MetricSummary } from "@/features/health/engine/health"
 import type { BiometricReport } from "@/features/biometrics/engine/report"
 import type { DataQuality, GoalForecast } from "@/features/biometrics/engine/forecast"
 import { bodyFatBand, whtrBand } from "@/features/biometrics/engine/reference"
@@ -24,7 +25,7 @@ import { resolveNutrient } from "@/features/supplements/engine/nutrients"
 import { daysBetween, formatDate, formatNumber, formatSigned, isNum } from "@/lib/format"
 import type { Profile, Supplement } from "@/types/domain"
 
-export type AdviceCategory = "goals" | "body" | "training" | "nutrition" | "labs" | "supplements" | "heart" | "checkups"
+export type AdviceCategory = "goals" | "body" | "training" | "nutrition" | "labs" | "supplements" | "heart" | "lifestyle" | "checkups"
 export type AdvicePriority = "high" | "medium" | "low"
 
 export const ADVICE_CATEGORY_LABELS: Record<AdviceCategory, string> = {
@@ -35,6 +36,7 @@ export const ADVICE_CATEGORY_LABELS: Record<AdviceCategory, string> = {
   labs: "Analisi",
   supplements: "Integratori",
   heart: "Cuore e pressione",
+  lifestyle: "Sonno e attività",
   checkups: "Controlli",
 }
 
@@ -68,6 +70,8 @@ export interface AdviceInput {
   medical: MedicalAnalysis | null
   /** report del motore allenamento (assente se la sezione non è usata) */
   training?: TrainingReport | null
+  /** dati giornalieri da Apple Salute (assenti se non collegata) */
+  health?: Record<HealthMetric, MetricSummary> | null
 }
 
 const PRIORITY_ORDER: Record<AdvicePriority, number> = { high: 0, medium: 1, low: 2 }
@@ -513,6 +517,35 @@ export function buildAdvice(input: AdviceInput): Advice[] {
     }
   } else if (bio?.latest) {
     add({ id: "tr-none", category: "training", priority: "low", title: "Allenamento non ancora collegato", why: "Senza scheda e sessioni non è possibile capire quali distretti sono indietro.", action: "Importa la scheda e il diario con l'AI Bridge: l'app incrocia volume per muscolo e circonferenze.", link: { href: "/bridge?tab=training", label: "Importa scheda" } })
+  }
+
+  /* ============================ SONNO E ATTIVITÀ ============================ */
+  const hs = input.health ?? null
+  if (hs) {
+    const sleep = hs.sleep_min
+    if (sleep.avg7 !== null && sleep.days7 >= 4) {
+      const h = formatMetric("sleep_min", sleep.avg7)
+      if (sleep.avg7 < 6)
+        add({ id: "hl-sleep-low", category: "lifestyle", priority: "medium", title: `Dormi poco: ${h} a notte`, why: `Media degli ultimi ${sleep.days7} giorni da Apple Salute. Sotto le 6 ore calano recupero muscolare, forza e controllo della fame, e aumenta il cortisolo.`, action: "Punta a 7–9 ore: orario fisso per andare a letto, niente schermi e caffeina nelle ore serali, stanza buia e fresca.", link: { href: "/settings#salute", label: "Apple Salute" } })
+      else if (sleep.avg7 < 7)
+        add({ id: "hl-sleep-short", category: "lifestyle", priority: "low", title: `Sonno un po' corto: ${h} a notte`, why: `Media degli ultimi ${sleep.days7} giorni. Per chi si allena e vuole migliorare la composizione corporea l'ideale è almeno 7 ore.`, action: "Anticipa di 30 minuti l'ora in cui vai a letto per qualche settimana e osserva recupero e carichi." })
+      else add({ id: "hl-sleep-ok", category: "lifestyle", priority: "low", positive: true, title: `Sonno adeguato: ${h} a notte`, why: `Media degli ultimi ${sleep.days7} giorni da Apple Salute.`, action: "Continua così: il sonno è il primo integratore per il recupero." })
+    }
+    const steps = hs.steps
+    if (steps.avg7 !== null && steps.days7 >= 4) {
+      const n = formatMetric("steps", steps.avg7)
+      if (steps.avg7 < 5000)
+        add({ id: "hl-steps-low", category: "lifestyle", priority: "medium", title: `Pochi passi: ${n} al giorno`, why: "Sotto i 5.000 passi la giornata è sedentaria anche se ti alleni: il movimento quotidiano (NEAT) pesa sul dispendio più dell'allenamento.", action: "Aggiungi 2–3 camminate brevi (10 minuti dopo i pasti) e punta gradualmente a 7.000–8.000 passi." })
+      else if (steps.avg7 < 7500)
+        add({ id: "hl-steps-mid", category: "lifestyle", priority: "low", title: `Passi nella media: ${n} al giorno`, why: "Fino a circa 8.000 passi al giorno i benefici per cuore e metabolismo continuano a crescere.", action: "Aggiungi 1.500–2.000 passi: scale invece dell'ascensore, una fermata a piedi, telefonate camminando." })
+      else add({ id: "hl-steps-ok", category: "lifestyle", priority: "low", positive: true, title: `Ottimo movimento: ${n} passi al giorno`, why: `Media degli ultimi ${steps.days7} giorni.`, action: "Mantieni questo livello: aiuta il dispendio e il recupero tra gli allenamenti." })
+    }
+    const hr = hs.resting_hr
+    if (hr.avg7 !== null && hr.avg28 !== null && hr.days7 >= 4 && hr.avg7 - hr.avg28 >= 5)
+      add({ id: "hl-rhr-up", category: "lifestyle", priority: "medium", title: "Battiti a riposo in aumento", why: `Media 7 giorni ${formatMetric("resting_hr", hr.avg7)} contro ${formatMetric("resting_hr", hr.avg28)} del mese: un aumento di 5+ battiti indica spesso fatica accumulata, poco sonno, stress o un malanno in arrivo.`, action: "Nei prossimi giorni riduci volume o intensità (o fai una settimana di scarico), dormi di più e idratati. Se resta alto o hai sintomi, parlane con il medico." })
+    const hrv = hs.hrv_ms
+    if (hrv.avg7 !== null && hrv.avg28 !== null && hrv.days7 >= 4 && hrv.avg7 < hrv.avg28 * 0.85)
+      add({ id: "hl-hrv-down", category: "lifestyle", priority: "low", title: "Variabilità cardiaca più bassa del solito", why: `Media 7 giorni ${formatMetric("hrv_ms", hrv.avg7)} contro ${formatMetric("hrv_ms", hrv.avg28)} del mese: il sistema nervoso è sotto carico.`, action: "Privilegia sonno e sessioni meno intense finché non torna ai tuoi valori abituali." })
   }
 
   /* ================================ CONTROLLI ================================ */
