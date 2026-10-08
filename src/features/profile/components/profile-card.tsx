@@ -44,7 +44,7 @@ export function ProfileCard() {
   })
 
   useEffect(() => {
-    if (profileQ.data) reset(profileToFormInput(profileQ.data))
+    if (profileQ.data) reset(profileToFormInput(profileQ.data), { keepDirtyValues: true })
   }, [profileQ.data, reset])
 
   const birth = useWatch({ control, name: "birth_date" })

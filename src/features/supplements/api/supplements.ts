@@ -118,10 +118,12 @@ export function useSaveSupplement() {
 export function useSetSupplementActive() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ id, active, today }: { id: string; active: boolean; today: string }) => {
+    mutationFn: async ({ id, active, today, startDate }: { id: string; active: boolean; today: string; startDate?: string | null }) => {
+      // non ancora iniziato: la fine non può precedere l'inizio
+      const end = startDate && startDate > today ? startDate : today
       const { error } = await createClient()
         .from("supplements")
-        .update(active ? { is_active: true, end_date: null } : { is_active: false, end_date: today })
+        .update(active ? { is_active: true, end_date: null } : { is_active: false, end_date: end })
         .eq("id", id)
       if (error) throw new Error(error.message)
     },

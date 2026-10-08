@@ -3,8 +3,10 @@
 import { Check, ChevronLeft, ChevronRight, Repeat, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { Emoji } from "@/components/shared/emoji"
 import { GlassCard } from "@/components/shared/glass-card"
 import { MEAL_SLOT_LABELS } from "@/config/constants"
+import { foodEmoji, MEAL_SLOT_EMOJI } from "@/lib/emoji"
 import { formatDate, formatNumber, isNum, todayISO } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import type { MealLogStatus } from "@/types/domain"
@@ -35,9 +37,11 @@ interface Props {
   onDateChange: (d: string) => void
   logs: MealLog[]
   onSet: (mealId: string, status: MealLogStatus | null) => void
+  /** primo giorno di cui sono caricati i dati (non si torna più indietro) */
+  minDate?: string
 }
 
-export function MealChecklist({ day, date, onDateChange, logs, onSet }: Props) {
+export function MealChecklist({ day, date, onDateChange, logs, onSet, minDate }: Props) {
   const today = todayISO()
   const dayLogs = new Map(logs.filter((l) => l.log_date === date).map((l) => [l.meal_id, l.status]))
   const done = day.meals.filter((m) => dayLogs.get(m.id) === "done").length
@@ -52,7 +56,7 @@ export function MealChecklist({ day, date, onDateChange, logs, onSet }: Props) {
           </p>
         </div>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="size-8 rounded-lg" aria-label="Giorno precedente" onClick={() => onDateChange(shiftISO(date, -1))}>
+          <Button variant="ghost" size="icon" className="size-8 rounded-lg" aria-label="Giorno precedente" disabled={Boolean(minDate && date <= minDate)} onClick={() => onDateChange(shiftISO(date, -1))}>
             <ChevronLeft className="size-4" />
           </Button>
           <span className="min-w-36 text-center text-sm font-medium">
@@ -92,6 +96,7 @@ export function MealChecklist({ day, date, onDateChange, logs, onSet }: Props) {
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold">
+                    <Emoji e={MEAL_SLOT_EMOJI[m.slot]} />
                     {m.label ?? MEAL_SLOT_LABELS[m.slot]}
                     {m.time_hint && <span className="ml-2 text-xs font-normal text-muted-foreground">{m.time_hint.slice(0, 5)}</span>}
                   </p>
@@ -123,7 +128,10 @@ export function MealChecklist({ day, date, onDateChange, logs, onSet }: Props) {
               <ul className="mt-3 space-y-1 text-sm">
                 {s.fixed.map((it) => (
                   <li key={it.id} className="flex justify-between gap-3">
-                    <span>{itemText(it)}</span>
+                    <span>
+                      <Emoji e={foodEmoji(it.food_name)} />
+                      {itemText(it)}
+                    </span>
                     {isNum(it.kcal) && <span className="shrink-0 text-xs tabular text-muted-foreground">{formatNumber(it.kcal, 0)} kcal</span>}
                   </li>
                 ))}
@@ -133,6 +141,7 @@ export function MealChecklist({ day, date, onDateChange, logs, onSet }: Props) {
                       <div key={it.id} className="flex justify-between gap-3">
                         <span>
                           {i > 0 && <span className="mr-1 text-xs italic text-muted-foreground">oppure</span>}
+                          <Emoji e={foodEmoji(it.food_name)} />
                           {itemText(it)}
                         </span>
                         {isNum(it.kcal) && <span className="shrink-0 text-xs tabular text-muted-foreground">{formatNumber(it.kcal, 0)} kcal</span>}

@@ -47,21 +47,26 @@ export const FOOD_GROUP_LABELS: Record<FoodGroup, string> = {
 
 /** Ordine di valutazione: le regole più specifiche prima. */
 const RULES: Array<[FoodGroup, RegExp]> = [
+  // eccezioni da controllare prima: "melanzane" non è una mela, "fagiolini" non sono legumi, "rana pescatrice" è pesce
+  ["vegetables", /\b(melanzan|fagiolini|cavolfior)/],
+  ["fish", /\b(pescatric|rana pescatrice)/],
+  ["poultry", /\b(macinato|polpette|hamburger) di (pollo|tacchino)/],
+  ["red_meat", /\bpolpett[ea]\b(?! di (pesce|tonno|merluzz|salmon|ceci|lenticch|legum|verdur|zucchin|melanzan|spinac|pollo|tacchin))/],
   ["processed_meat", /\b(prosciutt|bresaol|salam|speck|mortadell|wurstel|würstel|pancett|salsicc|coppa|cotechin|affettat|hamburger di manzo)/],
   ["oily_fish", /\b(salmon|sgombr|alic|acciug|sardin|aringh|trota|tonno fresco|pesce spada|ricciola)/],
-  ["fish", /\b(pesce|merluzz|nasell|orata|branzin|spigol|sogliol|tonno|platess|baccal|gamber|calamar|polp|seppi|cozz|vongol|crostace|surimi|halibut|dentice)/],
+  ["fish", /\b(pesce|merluzz|nasell|orata|branzin|spigol|sogliol|tonno|platess|baccal|gamber|calamar|polp[oi]\b|polip|seppi|cozz|vongol|crostace|surimi|halibut|dentice)/],
   ["red_meat", /\b(manzo|vitell|maial|agnell|cavall|bovin|fesa di vitello|fiorentina|bistecca|macinato|carpaccio|roast beef|lonza|filetto di manzo|tagliata)/],
   ["poultry", /\b(pollo|tacchin|petto di|fesa di tacchino|faraon|anatra)/],
   ["eggs", /\b(uov[oa]|album|tuorl|frittat|omelette)/],
   ["legumes", /\b(legum|ceci|lenticch|fagiol|piselli|fave|lupin|soia|edamame|tofu|tempeh|hummus|cicerchi)/],
   ["nuts_seeds", /\b(noci|nocciol|mandorl|anacard|pistacch|arachid|semi di|chia|lino|burro di arachidi|frutta secca|pinoli|noce)/],
   ["olive_oil", /\b(olio (extra|evo|d.oliva)|evo\b|olio extravergine)/],
-  ["dairy", /\b(latte|yogurt|skyr|kefir|formagg|ricott|mozzarell|parmigian|grana|fiocchi di latte|stracchin|feta|quark|scamorz|emmental|caciotta|pecorin)/],
-  ["whole_grains", /\b(integral|avena|fiocchi d.avena|farro|orzo|grano saraceno|quinoa|segale|miglio|riso (nero|rosso|venere|basmati integrale)|pane di segale|crusca|amaranto)/],
+  ["dairy", /\b(latte|yogurt|skyr|kefir|formagg|ricott|mozzarell|parmigian|grana\b|grana padano|fiocchi di latte|stracchin|feta|quark|scamorz|emmental|caciotta|pecorin)/],
+  ["whole_grains", /\b(integral|avena|granola|muesli|fiocchi d.avena|farro|orzo|grano saraceno|quinoa|segale|miglio|riso (nero|rosso|venere|basmati integrale)|pane di segale|crusca|amaranto)/],
   ["refined_grains", /\b(pasta|riso|pane|gallett|crackers?|grissin|fette biscottate|gnocchi|cous ?cous|piadin|focacc|pizza|corn ?flakes|cereali|tortill|bagel)/],
   ["sweets", /\b(cioccolat|biscott|merendin|torta|gelato|marmellat|miele|zucchero|nutella|crema spalmabile|dolce|croissant|cornetto|brioche|caramell)/],
   ["alcohol", /\b(vino|birra|spritz|cocktail|liquor|amaro|prosecco|whisk|vodka|gin\b|rum\b)/],
-  ["fruit", /\b(mela|mele|pera|pere|banan|arancia|arance|kiwi|frutti di bosco|mirtill|fragol|lampon|uva|pesca|pesche|albicocc|anguria|melone|ananas|mandarin|clementin|ciliegi|prugn|fichi|frutta|mango|pompelm|melagran|cachi|datteri)/],
+  ["fruit", /\b(mela\b|mele\b|mela |pera\b|pere\b|banan|arancia|arance|kiwi|frutti di bosco|mirtill|fragol|lampon|uva\b|pesca\b|pesche|albicocc|anguria|melone|ananas|mandarin|clementin|ciliegi|prugn|fichi|frutta|mango|pompelm|melagran|cachi|datteri)/],
   ["vegetables", /\b(verdur|insalat|lattug|rucol|spinac|zucchin|broccol|cavol|carot|pomodor|peperon|melanzan|finocch|cetriol|asparag|fagiolini|bietol|carciof|verza|radicchi|funghi|cipoll|sedano|zucca|minestrone|ortaggi|cicori|valerian|cavolfior|cavolini|catalogna|friariell|songino)/],
 ]
 
@@ -103,7 +108,8 @@ export function foodProfile(days: DayWithMeals[]): FoodProfile {
       // alternative "oppure": ogni alternativa conta 1/n
       const groupSize = new Map<number, number>()
       for (const it of meal.items) if (it.alternative_group !== null) groupSize.set(it.alternative_group, (groupSize.get(it.alternative_group) ?? 0) + 1)
-      const seen = new Set<FoodGroup>()
+      // peso per gruppo nel pasto: somma delle alternative, al massimo 1 porzione
+      const mealGroups = new Map<FoodGroup, number>()
       for (const it of meal.items) {
         const g = classifyFood(it.food_name)
         if (!g) {
@@ -112,12 +118,12 @@ export function foodProfile(days: DayWithMeals[]): FoodProfile {
         }
         const w = it.alternative_group !== null ? 1 / (groupSize.get(it.alternative_group) ?? 1) : 1
         // una porzione per gruppo per pasto (due verdure nello stesso piatto = 1 porzione abbondante)
-        if (!seen.has(g)) weekly[g] += w
-        seen.add(g)
+        mealGroups.set(g, Math.min(1, (mealGroups.get(g) ?? 0) + w))
         const m = (ex[g] ??= new Map())
         const key = it.food_name.trim().toLowerCase()
         m.set(key, (m.get(key) ?? 0) + 1)
       }
+      for (const [g, w] of mealGroups) weekly[g] += w
       if (MAIN_SLOTS.has(meal.slot)) {
         mainMeals++
         const t = mealTotals(meal)

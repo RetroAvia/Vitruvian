@@ -123,15 +123,15 @@ export function LabsView() {
       {header}
       <div className="space-y-6">
         {/* Riepilogo */}
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid grid-cols-3 gap-2 sm:gap-4">
           {[
-            { l: "Ultimo referto", v: formatDate(summary.latestDate, "long") },
+            { l: "Ultimo referto", v: formatDate(summary.latestDate, "medium") },
             { l: "Esami monitorati", v: String(summary.series.length) },
             { l: "Fuori range (ultimo)", v: String(summary.outOfRange) },
           ].map((t) => (
-            <GlassCard key={t.l} className="p-4">
-              <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">{t.l}</p>
-              <p className="mt-2 font-display text-2xl font-semibold">{t.v}</p>
+            <GlassCard key={t.l} className="p-3 sm:p-4">
+              <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground sm:text-xs">{t.l}</p>
+              <p className="mt-1.5 font-display text-base font-semibold sm:text-2xl">{t.v}</p>
             </GlassCard>
           ))}
         </div>

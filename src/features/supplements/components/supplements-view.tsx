@@ -6,6 +6,7 @@ import { useMemo, useState } from "react"
 import { toast } from "sonner"
 
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
+import { Emoji } from "@/components/shared/emoji"
 import { EmptyState } from "@/components/shared/empty-state"
 import { GlassCard } from "@/components/shared/glass-card"
 import { InsightList } from "@/components/shared/insight-list"
@@ -15,6 +16,8 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { SUPPLEMENT_FORM_LABELS, SUPPLEMENT_FREQUENCY_LABELS, SUPPLEMENT_TIMINGS, type SupplementTiming } from "@/config/constants"
 import { useProfile } from "@/features/profile/api/profile"
+import { useTraining } from "@/features/training/hooks/use-training"
+import { supplementEmoji } from "@/lib/emoji"
 import { formatDate, formatNumber, isNum, shiftISO, todayISO } from "@/lib/format"
 import { useSound } from "@/lib/sound"
 import { cn } from "@/lib/utils"
@@ -50,18 +53,21 @@ export function SupplementsView() {
   const [formOpen, setFormOpen] = useState(false)
 
   const supplements = useMemo(() => supplementsQ.data ?? [], [supplementsQ.data])
+  // giorno di allenamento secondo la scheda (null = non noto → mostra comunque)
+  const { report: training } = useTraining()
+  const trainingDay = training?.tree?.days.every((d) => d.day_of_week) ? !training.today.rest || Boolean(training.today.doneToday) : null
   const sex = profileQ.data?.sex ?? null
 
   const data = useMemo(() => {
-    const { totals, unknown } = computeTotals(supplements, sex)
+    const { totals, unknown } = computeTotals(supplements, sex, today)
     return {
       totals,
       unknown,
       insights: supplementInsights(supplements, totals),
-      schedule: todaySchedule(supplements, today),
+      schedule: todaySchedule(supplements, today, trainingDay, logsQ.data ?? []),
       adherence: supplementAdherence(supplements, logsQ.data ?? [], today, 14),
     }
-  }, [supplements, sex, logsQ.data, today])
+  }, [supplements, sex, logsQ.data, today, trainingDay])
 
   const takenToday = new Set((logsQ.data ?? []).filter((l) => l.log_date === today && l.taken).map((l) => l.supplement_id))
   const scheduledToday = data.schedule.flatMap((g) => g.items)
@@ -165,7 +171,7 @@ export function SupplementsView() {
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
               <h2 className="text-base font-semibold">Oggi</h2>
-              <p className="text-xs capitalize text-muted-foreground">
+              <p className="text-xs capitalize text-muted-foreground" suppressHydrationWarning>
                 {new Intl.DateTimeFormat("it-IT", { weekday: "long", day: "numeric", month: "long" }).format(new Date())}
               </p>
             </div>
@@ -202,6 +208,7 @@ export function SupplementsView() {
                             </span>
                             <span className="min-w-0 flex-1">
                               <span className={cn("block truncate text-sm font-medium", done && "text-muted-foreground line-through decoration-gain/60")}>
+                                <Emoji e={supplementEmoji(s.name)} className="mr-1" />
                                 {s.name}
                               </span>
                               <span className="block truncate text-xs text-muted-foreground">
@@ -407,7 +414,10 @@ function SupplementCard({ s, onEdit }: { s: Supplement; onEdit: () => void }) {
     <GlassCard className="hover-lift flex flex-col p-4">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold">{s.name}</p>
+          <p className="truncate text-sm font-semibold">
+            <Emoji e={supplementEmoji(s.name)} className="mr-1" />
+            {s.name}
+          </p>
           <p className="truncate text-xs text-muted-foreground">
             {[s.brand, s.dose_label ?? SUPPLEMENT_FORM_LABELS[s.form]].filter(Boolean).join(" · ")}
           </p>
@@ -424,7 +434,7 @@ function SupplementCard({ s, onEdit }: { s: Supplement; onEdit: () => void }) {
             onClick={() => {
               play("tap")
               setActive.mutate(
-                { id: s.id, active: !s.is_active, today: todayISO() },
+                { id: s.id, active: !s.is_active, today: todayISO(), startDate: s.start_date },
                 {
                   onSuccess: () => toast.success(s.is_active ? `${s.name} sospeso` : `${s.name} di nuovo in uso`),
                   onError: (e) => toast.error(e.message),

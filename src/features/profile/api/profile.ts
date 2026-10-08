@@ -38,6 +38,8 @@ export function useUpdateProfile() {
       queryClient.setQueryData(queryKeys.profile, data)
       // altezza e attività cambiano gli indici calcolati nella vista
       void queryClient.invalidateQueries({ queryKey: queryKeys.checkups.all })
+      // i valori di riferimento delle analisi dipendono da sesso ed età (calcolati dal database)
+      void queryClient.invalidateQueries({ queryKey: ["labs"] })
     },
   })
 }

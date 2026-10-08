@@ -29,7 +29,7 @@ const schema = z.object({
   target_fat_pct: dec("Massa grassa", 3, 60),
   target_waist_cm: dec("Vita", 40, 200),
   target_ffm_kg: dec("Massa magra", 20, 150),
-  target_date: z.string().refine((d) => d === "" || d >= todayISO(), "La data deve essere futura"),
+  target_date: z.string().refine((d) => d === "" || /^\d{4}-\d{2}-\d{2}$/.test(d), "Data non valida"),
   restart: z.boolean(),
 })
 type In = z.input<typeof schema>
@@ -53,16 +53,22 @@ export function GoalsCard() {
   const profile = profileQ.data
   const latest = checkupsQ.data?.[checkupsQ.data.length - 1]
 
-  const { register, handleSubmit, reset, formState: { errors, isDirty, isSubmitting } } = useForm<In, unknown, Out>({
+  const { register, handleSubmit, reset, setError, formState: { errors, isDirty, isSubmitting } } = useForm<In, unknown, Out>({
     resolver: zodResolver(schema),
     defaultValues: toForm(null),
     mode: "onTouched",
   })
   useEffect(() => {
-    if (profile) reset(toForm(profile))
+    // non perde le modifiche in corso se il profilo si aggiorna da un'altra card
+    if (profile) reset(toForm(profile), { keepDirtyValues: true })
   }, [profile, reset])
 
   const onSubmit = handleSubmit(async (v) => {
+    // una data già passata è accettata solo se era quella salvata (si possono modificare gli altri campi)
+    if (v.target_date && v.target_date < todayISO() && v.target_date !== (profile?.target_date ?? "")) {
+      setError("target_date", { message: "La data deve essere futura" })
+      return
+    }
     try {
       const saved = await update.mutateAsync({
         target_weight_kg: v.target_weight_kg,

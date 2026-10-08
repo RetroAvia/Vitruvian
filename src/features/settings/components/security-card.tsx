@@ -203,6 +203,8 @@ export function SecurityCard() {
         )}
       </div>
 
+      <PasswordChange />
+
       {/* Preferenze */}
       <div className="mt-4 space-y-3">
         <Row icon={Timer} title="Disconnessione automatica" desc="Esce dopo un periodo di inattività (utile su PC condivisi).">
@@ -224,7 +226,7 @@ export function SecurityCard() {
             }}
           />
         </Row>
-        <Row icon={ShieldCheck} title="Avvio istantaneo" desc="Copia temporanea dei dati su questo dispositivo (24 h) per aprire l'app subito. Cancellata all'uscita.">
+        <Row icon={ShieldCheck} title="Avvio istantaneo" desc="Copia temporanea dei dati su questo dispositivo (7 giorni): apertura immediata e uso offline, anche in palestra. Cancellata all'uscita.">
           <Toggle
             on={offlineCache}
             label="Avvio istantaneo"
@@ -295,5 +297,74 @@ function Toggle({ on, onChange, label }: { on: boolean; onChange: (v: boolean) =
     >
       <span className={cn("absolute top-0.5 size-5 rounded-full bg-background shadow transition-transform duration-200", on ? "translate-x-[22px]" : "translate-x-0.5")} />
     </button>
+  )
+}
+
+/** Cambio password (utile al primo accesso con una password provvisoria). */
+function PasswordChange() {
+  const [open, setOpen] = useState(false)
+  const [pwd, setPwd] = useState("")
+  const [confirm, setConfirm] = useState("")
+  const [busy, setBusy] = useState(false)
+  const tooShort = pwd.length > 0 && pwd.length < 10
+  const mismatch = confirm.length > 0 && pwd !== confirm
+  const valid = pwd.length >= 10 && pwd === confirm
+
+  async function save() {
+    if (!valid) return
+    setBusy(true)
+    const { error } = await createClient().auth.updateUser({ password: pwd })
+    setBusy(false)
+    if (error) {
+      playSound("error")
+      toast.error("Password non aggiornata", { description: error.message })
+      return
+    }
+    playSound("success")
+    toast.success("Password aggiornata")
+    setPwd("")
+    setConfirm("")
+    setOpen(false)
+  }
+
+  return (
+    <div className="surface-inset mt-4 rounded-xl p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex gap-3">
+          <KeyRound className="mt-0.5 size-4 shrink-0 text-neon" />
+          <div>
+            <p className="text-sm font-medium">Password</p>
+            <p className="text-xs text-muted-foreground">Cambiala al primo accesso se ti è stata data una password provvisoria.</p>
+          </div>
+        </div>
+        {!open && (
+          <Button variant="outline" size="sm" className="rounded-lg" onClick={() => setOpen(true)}>
+            Cambia password
+          </Button>
+        )}
+      </div>
+      {open && (
+        <form
+          className="mt-3 grid gap-2 sm:grid-cols-[1fr_1fr_auto]"
+          onSubmit={(e) => {
+            e.preventDefault()
+            void save()
+          }}
+        >
+          <Input type="password" autoComplete="new-password" placeholder="Nuova password (min. 10 caratteri)" value={pwd} onChange={(e) => setPwd(e.target.value)} aria-invalid={tooShort} className="h-10 rounded-lg" />
+          <Input type="password" autoComplete="new-password" placeholder="Ripeti la password" value={confirm} onChange={(e) => setConfirm(e.target.value)} aria-invalid={mismatch} className="h-10 rounded-lg" />
+          <div className="flex gap-2">
+            <Button type="submit" className="rounded-lg" disabled={!valid || busy}>
+              {busy && <LoaderCircle className="size-4 animate-spin" />}
+              Salva
+            </Button>
+            <Button type="button" variant="ghost" className="rounded-lg" onClick={() => setOpen(false)}>
+              Annulla
+            </Button>
+          </div>
+          {(tooShort || mismatch) && <p className="text-xs text-warn sm:col-span-3">{tooShort ? "Almeno 10 caratteri." : "Le due password non coincidono."}</p>}
+        </form>
+      )}
+    </div>
   )
 }

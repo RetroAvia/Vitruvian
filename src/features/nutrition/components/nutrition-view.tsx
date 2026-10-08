@@ -1,6 +1,6 @@
 "use client"
 
-import { LoaderCircle, Salad, Sparkles, Star, Trash2, TriangleAlert } from "lucide-react"
+import { Bot, LoaderCircle, Salad, Sparkles, Star, Trash2, TriangleAlert } from "lucide-react"
 import Link from "next/link"
 import { useMemo, useState } from "react"
 import { toast } from "sonner"
@@ -97,11 +97,18 @@ export function NutritionView() {
       title="Nutrizione"
       description="Il piano del nutrizionista, la checklist dei pasti e il confronto con il tuo fabbisogno."
       actions={
-        <Button asChild className="rounded-xl">
-          <Link href="/bridge?tab=diet">
-            <Sparkles className="size-4" /> Importa dieta
-          </Link>
-        </Button>
+        <>
+          <Button asChild variant="outline" className="rounded-xl">
+            <Link href="/coach">
+              <Bot className="size-4" /> Crea con Coach AI
+            </Link>
+          </Button>
+          <Button asChild className="rounded-xl">
+            <Link href="/bridge?tab=diet">
+              <Sparkles className="size-4" /> Importa dieta
+            </Link>
+          </Button>
+        </>
       }
     />
   )
@@ -243,6 +250,7 @@ export function NutritionView() {
           <MealChecklist
             day={day}
             date={date}
+            minDate={from}
             onDateChange={(d) => {
               setDate(d)
               setDayChoice(null)

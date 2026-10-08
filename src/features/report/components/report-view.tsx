@@ -23,13 +23,15 @@ import { useDietPlans, useMealLogs, usePlanTree } from "@/features/nutrition/api
 import { adherenceScore, adherenceSeries } from "@/features/nutrition/engine/adherence"
 import { energyBalance, perKg } from "@/features/nutrition/engine/balance"
 import { dayForDate, dayTotals } from "@/features/nutrition/engine/totals"
-import { formatDate, formatNumber, formatSigned, isNum, todayISO } from "@/lib/format"
+import { MUSCLES } from "@/features/training/engine/catalog"
+import { useTraining } from "@/features/training/hooks/use-training"
+import { GOAL_LABELS } from "@/features/training/types"
+import { formatDate, formatNumber, formatSigned, isNum, shiftISO, todayISO } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import type { Checkup } from "@/types/domain"
 
 const ROWS: MetricKey[] = ["weight", "fat_pct", "fat_kg", "ffm", "bmr", "tbw_pct", "visceral", "waist", "abdomen", "chest", "arm", "thigh", "ffmi", "whtr"]
 const BASES: DeltaBase[] = ["previous", "segment", "baseline"]
-const NOTES_KEY = "vitruvian-report-questions"
 
 function Section({ title, children, className }: { title: string; children: React.ReactNode; className?: string }) {
   return (
@@ -47,21 +49,26 @@ export function ReportView() {
   const plansQ = useDietPlans()
   const activePlan = plansQ.data?.find((p) => p.is_active) ?? null
   const treeQ = usePlanTree(activePlan?.id ?? null)
-  const from = useMemo(() => {
-    const d = new Date()
-    d.setDate(d.getDate() - 30)
-    return d.toISOString().slice(0, 10)
-  }, [])
+  const from = useMemo(() => shiftISO(todayISO(), -30), [])
+  // domande per il nutrizionista: per utente, sul solo dispositivo
+  const NOTES_KEY = `vitruvian-report-questions:${user.id}`
   const logsQ = useMealLogs(from)
+  const { report: training } = useTraining()
 
   const [questions, setQuestions] = useState("")
   useEffect(() => {
     try {
+      // versione precedente senza utente: passa al primo account che apre il report
+      const legacy = localStorage.getItem("vitruvian-report-questions")
+      if (legacy !== null) {
+        if (localStorage.getItem(NOTES_KEY) === null) localStorage.setItem(NOTES_KEY, legacy)
+        localStorage.removeItem("vitruvian-report-questions")
+      }
       setQuestions(localStorage.getItem(NOTES_KEY) ?? "")
     } catch {
       /* storage non disponibile */
     }
-  }, [])
+  }, [NOTES_KEY])
   function saveQuestions(v: string) {
     setQuestions(v)
     try {
@@ -283,6 +290,37 @@ export function ReportView() {
                 <li>
                   Aderenza ultime 2 settimane: {formatNumber(nutrition.adh.score * 100, 0)}% ({nutrition.adh.trackedDays} giorni registrati)
                 </li>
+              )}
+            </ul>
+          </Section>
+        )}
+
+        {training?.hasData && (
+          <Section title="Allenamento">
+            <ul className="space-y-1">
+              {training.tree && (
+                <li>
+                  Scheda: <strong>{training.tree.plan.name}</strong> · {GOAL_LABELS[training.tree.plan.goal] ?? training.tree.plan.goal} ·{" "}
+                  {training.plan?.sessionsPerWeek ?? training.tree.days.length} giorni/settimana · {formatNumber(training.plan?.totalSets, 0)} serie settimanali
+                </li>
+              )}
+              <li>
+                Ultime 4 settimane: {formatNumber(training.logged.sessionsPerWeek, 1)} sessioni/settimana
+                {training.adherence !== null && ` (costanza ${training.adherence}%)`}
+                {training.logged.cardioMinPerWeek > 0 && ` · cardio ${formatNumber(training.logged.cardioMinPerWeek, 0)} min/settimana`}
+              </li>
+              {training.progress.filter((p) => p.kind === "load").slice(0, 4).length > 0 && (
+                <li>
+                  Massimali stimati:{" "}
+                  {training.progress
+                    .filter((p) => p.kind === "load")
+                    .slice(0, 4)
+                    .map((p) => `${p.name} ${formatNumber(p.best.value, 0)} kg`)
+                    .join(" · ")}
+                </li>
+              )}
+              {training.physique.weaknesses.length > 0 && (
+                <li>Distretti da potenziare: {training.physique.weaknesses.map((w) => MUSCLES[w.muscle].toLowerCase()).join(", ")}</li>
               )}
             </ul>
           </Section>

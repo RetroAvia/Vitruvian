@@ -9,6 +9,8 @@ import type { MealLogStatus } from "@/types/domain"
 
 import type { DayWithMeals, DietPlanRow, MealLog, PlanTree } from "../types"
 
+const NOT_FOUND = "Piano non trovato: potrebbe essere stato eliminato."
+
 export function useDietPlans() {
   return useQuery({
     queryKey: queryKeys.diet.plans,
@@ -29,10 +31,12 @@ export function usePlanTree(planId: string | null) {
   return useQuery({
     queryKey: queryKeys.diet.tree(planId ?? "none"),
     enabled: Boolean(planId),
+    retry: (n, e) => e.message !== NOT_FOUND && n < 3,
     queryFn: async (): Promise<PlanTree> => {
       const supabase = createClient()
-      const { data: plan, error: e1 } = await supabase.from("diet_plans").select("*").eq("id", planId as string).single()
+      const { data: plan, error: e1 } = await supabase.from("diet_plans").select("*").eq("id", planId as string).maybeSingle()
       if (e1) throw new Error(e1.message)
+      if (!plan) throw new Error(NOT_FOUND)
       const { data: days, error: e2 } = await supabase
         .from("diet_days")
         .select("*")
@@ -134,7 +138,10 @@ export function useDeletePlan() {
       const { error } = await createClient().from("diet_plans").delete().eq("id", id)
       if (error) throw new Error(error.message)
     },
-    onSuccess: () => invalidatePlans(qc),
+    onSuccess: (_, id) => {
+      qc.removeQueries({ queryKey: queryKeys.diet.tree(id) })
+      return invalidatePlans(qc)
+    },
   })
 }
 

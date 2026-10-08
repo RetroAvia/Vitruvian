@@ -5,7 +5,7 @@
  */
 import type { Insight } from "@/features/biometrics/engine/insights"
 import { SUPPLEMENT_TIMINGS, type SupplementTiming } from "@/config/constants"
-import { formatNumber, isNum, shiftISO } from "@/lib/format"
+import { formatNumber, isNum, localDateISO, parseISODate, shiftISO, todayISO } from "@/lib/format"
 import type { Json } from "@/types/database.types"
 import type { Sex, Supplement, SupplementIngredient, SupplementLog } from "@/types/domain"
 
@@ -51,12 +51,27 @@ export function frequencyFactor(s: Pick<Supplement, "frequency" | "days_per_week
   }
 }
 
-/** true se l'integratore va spuntato nella checklist di quel giorno. */
-export function isScheduled(s: Supplement, iso: string): boolean {
-  if (!s.is_active) return false
-  if (s.start_date && iso < s.start_date) return false
-  if (s.end_date && iso > s.end_date) return false
+/**
+ * true se l'integratore va spuntato nella checklist di quel giorno.
+ * @param trainingDay se noto (scheda con giorni fissi), gli integratori "solo nei giorni
+ *        di allenamento" compaiono solo quando ci si allena.
+ */
+export function isScheduled(s: Supplement, iso: string, trainingDay?: boolean | null, logs?: SupplementLog[]): boolean {
+  if (!isActiveOn(s, iso)) return false
+  if (s.frequency === "training_days" && trainingDay === false) return false
+  // settimanali: compaiono finché non hai fatto le dosi della settimana (sempre, se presi oggi)
+  if (s.frequency === "weekly" && logs) {
+    const monday = shiftISO(iso, -((parseISODate(iso).getDay() + 6) % 7))
+    const mine = logs.filter((l) => l.supplement_id === s.id && l.taken && l.log_date >= monday && l.log_date <= iso)
+    if (mine.some((l) => l.log_date === iso)) return true
+    return mine.length < (s.days_per_week ?? 1)
+  }
   return s.frequency !== "as_needed"
+}
+
+/** Attivo e dentro le date di inizio/fine. */
+export function isActiveOn(s: Supplement, iso: string): boolean {
+  return s.is_active && (!s.start_date || iso >= s.start_date) && (!s.end_date || iso <= s.end_date)
 }
 
 export function timingOrder(t: string): number {
@@ -102,8 +117,9 @@ export interface UnknownIngredient {
   unit: string | null
 }
 
-export function computeTotals(supplements: Supplement[], sex: Sex | null) {
-  const active = supplements.filter((s) => s.is_active)
+export function computeTotals(supplements: Supplement[], sex: Sex | null, today = todayISO()) {
+  // conta solo ciò che stai assumendo davvero oggi (date di inizio/fine comprese)
+  const active = supplements.filter((s) => isActiveOn(s, today))
   const map = new Map<string, NutrientTotal>()
   const unknown: UnknownIngredient[] = []
 
@@ -179,6 +195,15 @@ export interface SupplementAdherence {
 export function supplementAdherence(supplements: Supplement[], logs: SupplementLog[], today: string, span = 14): SupplementAdherence {
   const taken = new Set(logs.filter((l) => l.taken).map((l) => `${l.supplement_id}|${l.log_date}`))
   const firstLog = logs.reduce<string | null>((min, l) => (!min || l.log_date < min ? l.log_date : min), null)
+  // ogni integratore conta solo da quando esiste (o dalla data di inizio)
+  const firstBySup = new Map<string, string>()
+  for (const l of logs) if (!firstBySup.has(l.supplement_id) || l.log_date < (firstBySup.get(l.supplement_id) as string)) firstBySup.set(l.supplement_id, l.log_date)
+  const since = (s: Supplement) => {
+    const base = s.start_date ?? (s.created_at ? localDateISO(s.created_at) : "")
+    const first = firstBySup.get(s.id)
+    // dopo un ripristino da backup la riga è "nuova" ma le spunte sono vecchie
+    return first && first < base ? first : base
+  }
   const days: SupplementAdherence["days"] = []
   for (let i = span - 1; i >= 0; i--) {
     const date = shiftISO(today, -i)
@@ -187,7 +212,7 @@ export function supplementAdherence(supplements: Supplement[], logs: SupplementL
       days.push({ date, scheduled: 0, taken: 0 })
       continue
     }
-    const sched = supplements.filter((s) => s.frequency === "daily" || s.frequency === "cycle").filter((s) => isScheduled(s, date))
+    const sched = supplements.filter((s) => (s.frequency === "daily" || s.frequency === "cycle") && date >= since(s)).filter((s) => isScheduled(s, date))
     days.push({ date, scheduled: sched.length, taken: sched.filter((s) => taken.has(`${s.id}|${date}`)).length })
   }
   const scheduled = days.reduce((n, d) => n + d.scheduled, 0)
@@ -320,10 +345,10 @@ export function supplementInsights(supplements: Supplement[], totals: NutrientTo
 }
 
 /** Raggruppa gli integratori di oggi per momento di assunzione. */
-export function todaySchedule(supplements: Supplement[], iso: string) {
+export function todaySchedule(supplements: Supplement[], iso: string, trainingDay?: boolean | null, logs?: SupplementLog[]) {
   const groups = new Map<string, Supplement[]>()
   for (const s of supplements) {
-    if (!isScheduled(s, iso)) continue
+    if (!isScheduled(s, iso, trainingDay, logs)) continue
     const t = primaryTiming(s)
     groups.set(t, [...(groups.get(t) ?? []), s])
   }
